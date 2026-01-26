@@ -66,7 +66,7 @@ export default function Dashboard() {
       setLoading(true);
       const result = await apiClient.getTasks(user.id);
       if (result.error) throw new Error(result.error);
-      setTasks(result.data || []);
+      setTasks((result.data as any) || []);
     } catch (err) {
       console.error('Error fetching tasks:', err);
     } finally {
@@ -80,7 +80,7 @@ export default function Dashboard() {
       const result = await apiClient.createTask(user.id, taskData);
       if (result.error) throw new Error(result.error);
       if (result.data) {
-        setTasks([...tasks, result.data]);
+        setTasks([...tasks, result.data as any]);
       }
       setShowForm(false);
     } catch (err) {
@@ -94,12 +94,12 @@ export default function Dashboard() {
       const result = await apiClient.updateTask(user.id, taskData.id, taskData);
       if (result.error) throw new Error(result.error);
       if (result.data) {
-        setTasks(tasks.map(t => t.id === result.data.id ? result.data : t));
+        setTasks(tasks.map(t => t.id === (result.data as any).id ? result.data as any : t));
       }
       setEditingTask(null);
       setShowForm(false);
     } catch (err) {
-      setError('Failed to update task');
+      setError('Failed to update task')
     }
   };
 
@@ -126,7 +126,7 @@ export default function Dashboard() {
         const result = await apiClient.createTask(user.id, task);
         if (result.error) throw new Error(result.error);
         if (result.data) {
-          setTasks([...tasks, result.data]);
+          setTasks([...tasks, result.data as any]);
           setDeletedTasks(deletedTasks.filter(t => t.id !== taskId));
         }
       } catch (err) {
@@ -145,7 +145,7 @@ export default function Dashboard() {
     try {
       const result = await apiClient.updateTaskCompletion(user.id, taskId, completed);
       if (result.data) {
-        setTasks(tasks.map(t => t.id === taskId ? result.data : t));
+        setTasks(tasks.map(t => t.id === taskId ? result.data as any : t));
       }
     } catch (err) {
       console.error('Error updating task:', err);
@@ -343,8 +343,8 @@ export default function Dashboard() {
                       colorIndex={index % 4}
                       onToggleComplete={handleToggleComplete}
                       onDelete={handleDeleteTask}
-                      onEdit={(task) => {
-                        setEditingTask(task);
+                      onEdit={(t:any) => {
+                        setEditingTask(t);
                         setShowForm(true);
                       }}
                     />
