@@ -64,13 +64,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw new Error(result.error);
     }
 
-    if (result.data && result.data.access_token) {
+    if (result.data && (result.data as any).access_token) {
       // Store token in localStorage
-      localStorage.setItem('token', result.data.access_token);
+      localStorage.setItem('token', (result.data as any).access_token);
 
       // Create user object based on the login response
       const userData: User = {
-        id: result.data.user_id || 'unknown', // Adjust based on actual API response
+        id: (result.data as any).user_id || 'unknown', // Adjust based on actual API response
         email,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
