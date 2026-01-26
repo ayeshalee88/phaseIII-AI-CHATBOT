@@ -1,4 +1,4 @@
-# /sp.constitution
+/sp.constitution
 
 ## Project
 Multi-Phase Todo Application: From Python Console App to AI-Powered Cloud-Native System

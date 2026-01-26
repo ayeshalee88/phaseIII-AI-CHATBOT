@@ -1,122 +1,87 @@
-# Todo Application
+# Full-Stack Todo Web Application
 
-A command-line Todo application that stores tasks in memory with full CRUD functionality.
+This is a monorepo containing both the frontend and backend for a todo application.
 
 ## Overview
 
-This is a simple yet complete command-line todo application built with Python. It provides all basic todo operations:
-- Add tasks with title and description
-- List all tasks with unique ID and completion status
-- Update task title and description by ID
-- Delete tasks by ID
-- Toggle task completion state by ID
+This is a full-stack todo application built with:
+- **Backend**: FastAPI with SQLModel and PostgreSQL
+- **Frontend**: Next.js with TypeScript
+- **Authentication**: JWT-based authentication
+- **Database**: Neon Serverless PostgreSQL
+
+The application supports multi-user functionality with secure authentication and authorization.
 
 ## Features
 
-- In-memory storage (no files or databases)
-- Clean command-line interface
-- Full CRUD operations
-- Task completion tracking
-- Creation and update timestamps
+- User authentication (sign up and sign in)
+- Create, read, update, and delete tasks
+- Track task completion status
+- Multi-user support with data isolation
+- RESTful API design
+- Modern web interface
 
 ## Prerequisites
 
-- Python 3.13 or higher
-- UV package manager (optional but recommended)
-
-## Installation
-
-1. Clone or download this repository
-2. Navigate to the project directory
-3. The application is ready to run (no external dependencies)
-
-## Usage
-
-Run the application:
-```bash
-python run.py
-```
-
-Once the application is running, you'll see a `todo>` prompt. Here are the available commands:
-
-### Available Commands
-
-- `add <title> [description]` - Add a new task (use quotes for titles/descriptions with spaces)
-- `list` - List all tasks
-- `view <id>` - View a specific task
-- `update <id> <title> [description]` - Update a task (use quotes for titles/descriptions with spaces)
-- `delete <id>` - Delete a task
-- `complete <id>` - Mark task as completed
-- `incomplete <id>` - Mark task as incomplete
-- `toggle <id>` - Toggle task completion status
-- `help` - Show help information
-- `quit` or `exit` - Exit the application
-
-### Example Usage
-
-```
-todo> add "Buy groceries" "Milk, bread, eggs"
-todo> add "Finish report" "Complete the quarterly report"
-todo> list
-todo> complete 1
-todo> update 2 "Finish quarterly report" "Complete and submit the quarterly report"
-todo> delete 1
-todo> quit
-```
+- Node.js 18+ (for frontend)
+- Python 3.13+ (for backend)
+- PostgreSQL database (Neon recommended)
 
 ## Project Structure
 
 ```
-.
-├── src/
-│   └── todo_app.py          # Main application code with Task model, TodoApp service, and TodoCLI
-├── run.py                  # Application entry point
-├── README.md               # This file
-├── CLAUDE.md               # Claude Code rules
-├── plan.md                 # Implementation plan
-└── tasks.md                # Implementation tasks
+todo-app/
+├── backend/              # FastAPI backend
+│   ├── src/              # Main application code
+│   ├── api/              # API routes
+│   ├── models/           # Data models
+│   ├── database/         # Database configuration
+│   ├── auth/             # Authentication utilities
+│   └── core/             # Core configuration
+├── frontend/             # Next.js frontend
+│   ├── pages/            # Next.js pages
+│   ├── components/       # React components
+│   ├── styles/           # CSS styles
+│   ├── public/           # Static assets
+│   └── lib/              # Utility functions
+├── specs/                # Specification files
+└── history/              # Prompt history records
 ```
 
-## Architecture
+## Getting Started
 
-The application follows a clean separation of concerns:
+### Backend
+1. Navigate to the backend directory: `cd backend`
+2. Install dependencies: `pip install -r requirements.txt`
+3. Set up environment variables in `.env`
+4. Run the server: `uvicorn src.main:app --reload`
 
-- `Task` class: Represents a single todo task with ID, title, description, completion status, and timestamps
-- `TodoApp` class: Handles business logic and in-memory storage
-- `TodoCLI` class: Provides command-line interface and user interaction
-- Main function: Entry point for the application
+### Frontend
+1. Navigate to the frontend directory: `cd frontend`
+2. Install dependencies: `npm install`
+3. Run the development server: `npm run dev`
 
-## Design Decisions
+## Environment Variables
 
-- **In-memory storage**: Uses Python dictionaries for fast access without external dependencies
-- **Type hints**: Full type annotations for better code clarity
-- **Error handling**: Proper validation and error messages
-- **Timestamps**: Tracks creation and update times for tasks
-- **Clean CLI**: Intuitive command structure with helpful feedback
+Create a `.env` file in the backend directory with the following:
 
-## Limitations
+```
+DATABASE_URL=postgresql://username:password@localhost/todo_db
+SECRET_KEY=your-super-secret-key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
 
-- Data is not persisted between application runs
-- Single-user application
-- No authentication or multi-user support
-- Console-only interface
+## API Endpoints
 
-## Testing
+### Authentication
+- `POST /api/auth/signup` - User registration
+- `POST /api/auth/login` - User login
 
-To test the application, simply run it and try the various commands:
-
-1. Add several tasks with different titles and descriptions
-2. List all tasks to verify they're stored correctly
-3. View specific tasks to see detailed information
-4. Update tasks to modify their content
-5. Mark tasks as complete/incomplete to test state changes
-6. Delete tasks to verify removal from the list
-7. Exit and restart to confirm in-memory behavior
-
-## Next Steps
-
-This application serves as the foundation for Phase II, where it will be extended with:
-- Persistent storage (database)
-- Web interface (Next.js frontend)
-- API endpoints (FastAPI backend)
-- Multi-user support
+### Task Management
+- `GET /api/users/{user_id}/tasks` - Get all tasks for a user
+- `POST /api/users/{user_id}/tasks` - Create a new task
+- `GET /api/users/{user_id}/tasks/{task_id}` - Get a specific task
+- `PUT /api/users/{user_id}/tasks/{task_id}` - Update a task
+- `DELETE /api/users/{user_id}/tasks/{task_id}` - Delete a task
+- `PATCH /api/users/{user_id}/tasks/{task_id}/complete` - Update task completion status
