@@ -8,7 +8,7 @@ print(f"DEBUG: DATABASE_URL env var = '{os.getenv('DATABASE_URL')}'")
 print(f"DEBUG: All env vars with 'DATABASE': {[k for k in os.environ.keys() if 'DATABASE' in k.upper()]}")
 
 # Ensure we have a valid database URL
-database_url = settings.database_url or "sqlite:///./todo.db"
+database_url = settings.database_url or "sqlite:////temp/todo.db"
 
 # For HF Spaces, use /tmp folder (writable)
 if database_url.startswith("sqlite") and "./" in database_url:
