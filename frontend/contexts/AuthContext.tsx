@@ -1,32 +1,22 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { apiClient } from '../lib/api';
+﻿import React, { createContext, useContext, ReactNode } from 'react';
+import { signIn, signOut, useSession } from 'next-auth/react';
+import { useRouter } from 'next/router';
 
 interface User {
   id: string;
   email: string;
-  created_at: string;
-  updated_at: string;
-}
-// Add these interfaces for API responses
-interface LoginResponse {
-  access_token: string;
-  user_id?: string;
-  token_type?: string;
-}
-
-interface SignupResponse {
-  id: string;
-  email: string;
-  created_at: string;
-  updated_at: string;
+  name?: string;
+  image?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,84 +26,79 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check if user is logged in on initial load
-    const token = localStorage.getItem('token');
-    if (token) {
-      // In a real app, we would verify the token and get user info
-      // For now, we'll just set a dummy user
-      try {
-        const userData = localStorage.getItem('userData');
-        if (userData) {
-          setUser(JSON.parse(userData));
-        }
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-      }
-    }
-   
-  }, []);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   const login = async (email: string, password: string) => {
-    const result = await apiClient.login(email, password);
+    const result = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
+    });
 
-    if (result.error) {
+    if (result?.error) {
       throw new Error(result.error);
     }
 
-    if (result.data && (result.data as any).access_token) {
-      // Store token in localStorage
-      localStorage.setItem('token', (result.data as any).access_token);
-
-      // Create user object based on the login response
-      const userData: User = {
-        id: (result.data as any).user_id || 'unknown', // Adjust based on actual API response
-        email,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      localStorage.setItem('userData', JSON.stringify(userData));
-      setUser(userData);
+    if (result?.ok) {
+      router.push('/dashboard'); // ✅ Login redirects to dashboard
     }
   };
 
   const signup = async (email: string, password: string) => {
-    const result = await apiClient.signup(email, password);
+    try {
+      // Create the user account
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (result.error) {
-      throw new Error(result.error);
-    }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Signup failed');
+      }
 
-    if (result.data) {
-      // Store user data
-      const userData: User = {
-        id: (result.data as any).id || 'unknown',
-        email: (result.data as any).email,
-        created_at: (result.data as any).created_at,
-        updated_at: (result.data as any ).updated_at,
-      };
+      // After successful signup, log them in
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
 
-      localStorage.setItem('userData', JSON.stringify(userData));
-      setUser(userData);
+      if (result?.error) {
+        throw new Error('Account created but login failed. Please try logging in.');
+      }
+
+      if (result?.ok) {
+        router.push('/dashboard'); // ✅ Signup also redirects to dashboard
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userData');
-    setUser(null);
+  const loginWithGoogle = async () => {
+    await signIn('google', { callbackUrl: '/dashboard' }); // ✅ Google login also goes to dashboard
+  };
+
+  const logout = async () => {
+    await signOut({ callbackUrl: '/login' });
   };
 
   const value = {
-    user,
+    user: session?.user ? {
+      id: session.user.id as string,
+      email: session.user.email!,
+      name: session.user.name || undefined,
+    } : null,
     login,
     signup,
+    loginWithGoogle,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated: !!session?.user,
+    isLoading: status === 'loading',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

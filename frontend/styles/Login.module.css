@@ -1,5 +1,4 @@
-
-
+/* Add these to your existing Login.module.css */
 .loginContainer {
   min-height: 100vh;
   display: flex;
@@ -619,3 +618,57 @@
     transition-duration: 0.01ms !important;
   }
 }
+.googleButton {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  color: #3c4043;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: all 0.2s;
+  margin-bottom: 20px;
+}
+
+.googleButton:hover:not(:disabled) {
+  background: #f8f9fa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.googleButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.googleIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 24px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.divider span {
+  padding: 0 12px;
+  font-weight: 500;
+}
+

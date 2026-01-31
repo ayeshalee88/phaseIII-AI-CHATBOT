@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from api.tasks import router as tasks_router
+from api.auth import router as auth_router
+
 
 # Import API routers
 from api.auth import router as auth_router
@@ -12,25 +15,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://phase-ii-todo-full-stack-web-applic-pi.vercel.app",
-        "https://phase-ii-todo-full-stack-web-git-c0c5c2-ayeshaalee88s-projects.vercel.app",
-        "https://phase-ii-todo-full-stack-web-application-frontend-mnnakrnia.vercel.app",
-        "https://*.vercel.app",  # Allow all Vercel preview URLs
         "http://localhost:3000",
+        "https://*.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Add exception handlers
-app = add_exception_handlers(app)
+# Exception handlers
+add_exception_handlers(app)
 
-# Include API routers
+# Routers
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
 
@@ -40,4 +40,4 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

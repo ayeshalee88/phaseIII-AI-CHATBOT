@@ -1,4 +1,3 @@
-/* Navigation */
 .navbar {
   position: fixed;
   top: 0;
@@ -14,7 +13,7 @@
 .navContainer {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 1.25rem 2rem;
+  padding: 1.05rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -121,6 +120,124 @@
 .navSignup:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4);
+}
+
+
+.typingText {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid rgba(255, 255, 255, 0.75);
+  width: 0;
+  animation: typing 4s steps(30) infinite;
+  max-width: fit-content;
+}
+
+.heroTitle .typingText:nth-child(1) {
+  animation: typing 3.5s steps(26) 0s infinite;
+}
+
+.heroTitle .typingText:nth-child(3) {
+  animation: typing 3.5s steps(23) 4s infinite;
+  border-right-color: #764ba2;
+}
+
+@keyframes typing {
+  0%, 15% {
+    width: 0;
+    border-right-color: rgba(255, 255, 255, 0.75);
+  }
+  45%, 85% {
+    width: 100%;
+    border-right-color: rgba(255, 255, 255, 0.75);
+  }
+  100% {
+    width: 0;
+    border-right-color: transparent;
+  }
+}
+
+/* Responsive - Already exists, updating for typing */
+@media (max-width: 768px) {
+  .heroTitle {
+    font-size: 2.5rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .typingText {
+    white-space: normal !important;
+    border-right-width: 2px;
+    display: inline;
+  }
+  
+  /* Simplified animation for mobile */
+  .heroTitle .typingText:nth-child(1) {
+    animation: typingMobile 3s steps(26) 0s infinite;
+  }
+
+  .heroTitle .typingText:nth-child(3) {
+    animation: typingMobile 3s steps(23) 3.5s infinite;
+  }
+
+  @keyframes typingMobile {
+    0%, 15% {
+      opacity: 0;
+      max-width: 0;
+    }
+    45%, 85% {
+      opacity: 1;
+      max-width: 100%;
+    }
+    100% {
+      opacity: 0;
+      max-width: 0;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .heroTitle {
+    font-size: 2rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .typingText {
+    border-right-width: 2px;
+    font-size: 2rem;
+  }
+  
+  /* Faster animation on small screens */
+  .heroTitle .typingText:nth-child(1) {
+    animation: typingSmall 2.5s steps(20) 0s infinite;
+  }
+
+  .heroTitle .typingText:nth-child(3) {
+    animation: typingSmall 2.5s steps(18) 3s infinite;
+  }
+
+  @keyframes typingSmall {
+    0%, 15% {
+      opacity: 0;
+      max-width: 0;
+    }
+    40%, 80% {
+      opacity: 1;
+      max-width: 100%;
+    }
+    100% {
+      opacity: 0;
+      max-width: 0;
+    }
+  }
+}
+
+/* Accessibility - Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .typingText {
+    animation: none !important;
+    width: 100% !important;
+    border-right: none !important;
+  }
 }
 
 /* Mobile Menu */
@@ -1010,5 +1127,3 @@
     font-size: 2rem;
   }
 }
-
-

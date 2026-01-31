@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { signOut, useSession } from 'next-auth/react';
+import { GetServerSideProps } from 'next';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "./api/auth/[...nextauth]";
 import TaskCard from '../components/TaskCard';
 import TaskForm from '../components/TaskForm';
 import { apiClient } from '../lib/api';
@@ -22,8 +25,14 @@ interface DeletedTask extends Task {
   deleted_at: string;
 }
 
-export default function Dashboard() {
-  const { user, isAuthenticated, logout } = useAuth();
+interface DashboardProps {
+  user: {
+    id: string;
+    email: string;
+  };
+}
+
+export default function Dashboard({ user }: DashboardProps) {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [deletedTasks, setDeletedTasks] = useState<DeletedTask[]>([]);
@@ -34,25 +43,27 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<'all' | 'important' | 'completed'>('all');
   const [view, setView] = useState<'grid' | 'calendar'>('grid');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: session } = useSession();
   const [showDeletedModal, setShowDeletedModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
+  // Set token when session is available
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (session?.accessToken) {
+      apiClient.setToken(session.accessToken);
+    }
+  }, [session]);
+
+  // Fetch tasks when user and session are ready
+  useEffect(() => {
+    if (session?.accessToken && user?.id) {
       fetchTasks();
     }
-  }, [isAuthenticated, user]);
+  }, [session, user?.id]);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/');
-    }
-  }, [isAuthenticated, router]);
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/' });
+  };
 
   const filteredTasks = tasks.filter(task => {
     if (filter === 'completed') return task.completed;
@@ -61,7 +72,7 @@ export default function Dashboard() {
   });
 
   const fetchTasks = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     try {
       setLoading(true);
       const result = await apiClient.getTasks(user.id);
@@ -69,13 +80,14 @@ export default function Dashboard() {
       setTasks((result.data as any) || []);
     } catch (err) {
       console.error('Error fetching tasks:', err);
+      setError('Failed to fetch tasks');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateTask = async (taskData: Partial<Task>) => {
-    if (!user) return;
+    if (!user?.id) return;
     try {
       const result = await apiClient.createTask(user.id, taskData);
       if (result.error) throw new Error(result.error);
@@ -89,7 +101,7 @@ export default function Dashboard() {
   };
 
   const handleUpdateTask = async (taskData: Task) => {
-    if (!user) return;
+    if (!user?.id) return;
     try {
       const result = await apiClient.updateTask(user.id, taskData.id, taskData);
       if (result.error) throw new Error(result.error);
@@ -99,13 +111,13 @@ export default function Dashboard() {
       setEditingTask(null);
       setShowForm(false);
     } catch (err) {
-      setError('Failed to update task')
+      setError('Failed to update task');
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     if (!window.confirm('Delete this task?')) return;
-    if (!user) return;
+    if (!user?.id) return;
     try {
       const taskToDelete = tasks.find(t => t.id === taskId);
       if (taskToDelete) {
@@ -120,7 +132,7 @@ export default function Dashboard() {
 
   const handleRestoreTask = async (taskId: string) => {
     const taskToRestore = deletedTasks.find(t => t.id === taskId);
-    if (taskToRestore && user) {
+    if (taskToRestore && user?.id) {
       const { deleted_at, ...task } = taskToRestore;
       try {
         const result = await apiClient.createTask(user.id, task);
@@ -141,7 +153,7 @@ export default function Dashboard() {
   };
 
   const handleToggleComplete = async (taskId: string, completed: boolean) => {
-    if (!user) return;
+    if (!user?.id) return;
     try {
       const result = await apiClient.updateTaskCompletion(user.id, taskId, completed);
       if (result.data) {
@@ -149,10 +161,10 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error('Error updating task:', err);
+      setError('Failed to update task');
     }
   };
 
-  // Calendar functions
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -160,7 +172,6 @@ export default function Dashboard() {
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
-    
     return { daysInMonth, startingDayOfWeek };
   };
 
@@ -190,16 +201,6 @@ export default function Dashboard() {
     ];
     return colors[index % 4];
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.redirectMessage}>
-          <p>Please <a href="/login" className={styles.redirectLink}>log in</a> to access your dashboard.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -462,3 +463,28 @@ export default function Dashboard() {
     </>
   );
 }
+
+// Server-side authentication check
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getServerSession(context.req, context.res, authOptions);
+
+  // If no session, redirect to login
+  if (!session || !session.user) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    };
+  }
+
+  // Return user data to the page
+  return {
+    props: {
+      user: {
+        id: session.user.id,
+        email: session.user.email || '',
+      },
+    },
+  };
+};

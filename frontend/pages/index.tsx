@@ -1,24 +1,17 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/router'; 
 import { useAuth } from '../contexts/AuthContext';
+import { useSession } from 'next-auth/react'; 
 import Head from 'next/head';
 import styles from '../styles/HomePage.module.css';
 import Image from 'next/image';
+import Script from 'next/script';
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, router]);
-
-  if (isAuthenticated) {
-    return <div>Redirecting...</div>;
-  }
 
   return (
     <>
@@ -27,6 +20,13 @@ export default function Home() {
         <meta name="description" content="Organize your life with beautiful sticky notes" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
+
+      <Head>
+  <title>Todoify - Professional Task Management</title>
+  <meta name="description" content="Organize your life with beautiful sticky notes" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</Head>
+
 
       {/* Navigation */}
       <nav className={styles.navbar}>
@@ -88,11 +88,10 @@ export default function Home() {
           </div>
           
           <h1 className={styles.heroTitle}>
-            Organize Your Life with
+            <span className={styles.typingText}>Organize Your Life with</span>
             <br />
-            <span className={styles.heroTitleGradient}>Beautiful Sticky Notes</span>
+            <span className={`${styles.typingText} ${styles.heroTitleGradient}`}>Beautiful Sticky Notes</span>
           </h1>
-          
           <p className={styles.heroSubtitle}>
             Transform your tasks into colorful, organized sticky notes. 
             Simple, visual, and delightfully effective task management.

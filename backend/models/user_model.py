@@ -4,33 +4,25 @@ from datetime import datetime
 import uuid
 
 # Base models for requests/responses
-class TaskBase(SQLModel):
-    title: str
-    description: Optional[str] = None
-    completed: bool = False
+class UserBase(SQLModel):
+    email: str
 
-class TaskCreate(TaskBase):
-    pass
+class UserCreate(UserBase):
+    password: str
 
-class TaskUpdate(SQLModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    completed: Optional[bool] = None
-
-class TaskResponse(TaskBase):
+class UserResponse(UserBase):
     id: str
-    user_id: str
     created_at: datetime
     updated_at: datetime
 
 # Database model
-class Task(TaskBase, table=True):
-    __tablename__ = "tasks"
+class User(UserBase, table=True):
+    __tablename__ = "users"
     
     id: str = Field(
         default_factory=lambda: str(uuid.uuid4()),
         primary_key=True
     )
-    user_id: str = Field(foreign_key="users.id")
+    password_hash: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
