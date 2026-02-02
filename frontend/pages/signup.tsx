@@ -1,5 +1,3 @@
-// pages/signup.tsx - COMPLETE REPLACEMENT
-
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { signIn } from "next-auth/react";
@@ -37,54 +35,39 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // ✅ Call NextAuth signup API (not FastAPI backend)
-      const signupResponse = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // Call backend signup endpoint
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const res = await fetch(`${apiUrl}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('Signup status:', signupResponse.status);
+      const data = await res.json();
 
-      let signupData;
-      try {
-        const text = await signupResponse.text();
-        if (text) {
-          signupData = JSON.parse(text);
-        }
-      } catch (parseError) {
-        console.error('Parse error:', parseError);
-        throw new Error('Invalid server response');
+      if (!res.ok) {
+        setError(data.detail || "Signup failed");
+        setLoading(false);
+        return;
       }
 
-      if (!signupResponse.ok) {
-        throw new Error(signupData?.message || 'Signup failed');
-      }
-
-      console.log('✅ Signup successful');
-
-      // ✅ Auto-login after signup
+      // Signup successful, now auto-login
       const loginResult = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
-      console.log('Login result:', loginResult);
-
       if (loginResult?.error) {
-        setError('Account created but login failed. Please try logging in.');
-        setTimeout(() => router.push('/login'), 2000);
+        router.push("/login");
         return;
       }
 
       if (loginResult?.ok) {
-        router.push('/dashboard');
+        router.push("/dashboard");
       }
     } catch (err: any) {
-      console.error('Signup error:', err);
-      setError(err.message || "Signup failed. Please try again.");
-    } finally {
+      setError(err.message || "Network error");
       setLoading(false);
     }
   };
@@ -94,19 +77,10 @@ export default function Signup() {
     setError("");
     
     try {
-      // ✅ Google sign-in with proper callback
-      const result = await signIn("google", {
+      await signIn("google", {
         callbackUrl: "/dashboard",
-        redirect: true, // Let NextAuth handle redirect
       });
-      
-      // If redirect is false, handle manually
-      if (result?.error) {
-        setError("Google sign-in failed: " + result.error);
-        setLoading(false);
-      }
-    } catch (err: any) {
-      console.error('Google sign-in error:', err);
+    } catch (err) {
       setError("Google sign-in failed");
       setLoading(false);
     }
@@ -193,7 +167,7 @@ export default function Signup() {
             {loading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
-        <p className={styles.signupLink}>
+        <p>
           Already have an account? <a href="/login">Log in</a>
         </p>
       </div>
