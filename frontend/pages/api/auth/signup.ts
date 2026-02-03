@@ -17,6 +17,10 @@ export default async function handler(
       return res.status(400).json({ error: "Email and password required" });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -26,11 +30,15 @@ export default async function handler(
       return res.status(400).json({ error: "User already exists" });
     }
 
-    // Create user (password is NOT stored, only for credentials provider)
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user with hashed password
     const user = await prisma.user.create({
       data: {
         email,
-        name: name || email,
+        name: name || email.split('@')[0],
+        password: hashedPassword, // ← IMPORTANT: Store hashed password
       },
     });
 
@@ -38,8 +46,16 @@ export default async function handler(
       message: "User created successfully",
       userId: user.id,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Signup error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: "User already exists" });
+    }
+    
+    return res.status(500).json({ 
+      error: "Internal server error",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
