@@ -56,28 +56,26 @@ export default function Dashboard({ user }: DashboardProps) {
 
   // Fetch tasks when user and session are ready
   useEffect(() => {
-    if (session?.accessToken && user?.id) {
+    if (session?.user?.id) {
+      console.log('Session ready, fetching tasks for user:', session.user.id);
       fetchTasks();
     }
-  }, [session, user?.id]);
-
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' });
-  };
-
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'completed') return task.completed;
-    if (filter === 'important') return !task.completed;
-    return true;
-  });
+  }, [session?.user?.id]);
 
   const fetchTasks = async () => {
-    if (!user?.id) return;
+    if (!session?.user?.id) return;
+    
     try {
+      console.log('Fetching tasks...');
       setLoading(true);
-      const result = await apiClient.getTasks(user.id);
+      setError(null);
+      
+      const result = await apiClient.getTasks(session.user.id);
+      
       if (result.error) throw new Error(result.error);
-      setTasks((result.data as any) || []);
+      
+      console.log('Tasks fetched successfully:', result.data);
+      setTasks((result.data as Task[]) || []);
     } catch (err) {
       console.error('Error fetching tasks:', err);
       setError('Failed to fetch tasks');
@@ -87,82 +85,96 @@ export default function Dashboard({ user }: DashboardProps) {
   };
 
   const handleCreateTask = async (taskData: Partial<Task>) => {
-    if (!user?.id) return;
+    if (!session?.user?.id) return;
     try {
-      const result = await apiClient.createTask(user.id, taskData);
+      console.log('Creating task:', taskData);
+      const result = await apiClient.createTask(session.user.id, taskData);
+      
       if (result.error) throw new Error(result.error);
+      
       if (result.data) {
-        setTasks([...tasks, result.data as any]);
+        console.log('Task created successfully:', result.data);
+        // Refresh tasks list
+        await fetchTasks();
+        setShowForm(false);
       }
-      setShowForm(false);
     } catch (err) {
+      console.error('Create task error:', err);
       setError('Failed to create task');
     }
   };
 
   const handleUpdateTask = async (taskData: Task) => {
-    if (!user?.id) return;
+    if (!session?.user?.id) return;
     try {
-      const result = await apiClient.updateTask(user.id, taskData.id, taskData);
+      const result = await apiClient.updateTask(session.user.id, taskData.id, taskData);
       if (result.error) throw new Error(result.error);
+      
       if (result.data) {
-        setTasks(tasks.map(t => t.id === (result.data as any).id ? result.data as any : t));
+        // Refresh tasks list
+        await fetchTasks();
+        setEditingTask(null);
+        setShowForm(false);
       }
-      setEditingTask(null);
-      setShowForm(false);
     } catch (err) {
+      console.error('Update task error:', err);
       setError('Failed to update task');
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     if (!window.confirm('Delete this task?')) return;
-    if (!user?.id) return;
+    if (!session?.user?.id) return;
+    
     try {
       const taskToDelete = tasks.find(t => t.id === taskId);
       if (taskToDelete) {
-        setDeletedTasks([...deletedTasks, { ...taskToDelete, deleted_at: new Date().toISOString() }]);
+        setDeletedTasks([...deletedTasks, { 
+          ...taskToDelete, 
+          deleted_at: new Date().toISOString() 
+        }]);
       }
-      await apiClient.deleteTask(user.id, taskId);
-      setTasks(tasks.filter(t => t.id !== taskId));
+      
+      await apiClient.deleteTask(session.user.id, taskId);
+      // Refresh tasks list
+      await fetchTasks();
     } catch (err) {
+      console.error('Delete task error:', err);
       setError('Failed to delete task');
     }
   };
 
+  const handleToggleComplete = async (taskId: string, completed: boolean) => {
+    if (!session?.user?.id) return;
+    try {
+      const result = await apiClient.updateTaskCompletion(session.user.id, taskId, completed);
+      if (result.data) {
+        // Refresh tasks list
+        await fetchTasks();
+      }
+    } catch (err) {
+      console.error('Error updating task:', err);
+      setError('Failed to update task');
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/login' });
+  };
+
   const handleRestoreTask = async (taskId: string) => {
     const taskToRestore = deletedTasks.find(t => t.id === taskId);
-    if (taskToRestore && user?.id) {
-      const { deleted_at, ...task } = taskToRestore;
-      try {
-        const result = await apiClient.createTask(user.id, task);
-        if (result.error) throw new Error(result.error);
-        if (result.data) {
-          setTasks([...tasks, result.data as any]);
-          setDeletedTasks(deletedTasks.filter(t => t.id !== taskId));
-        }
-      } catch (err) {
-        setError('Failed to restore task');
-      }
+    if (taskToRestore) {
+      const { deleted_at, ...taskWithoutDeletedAt } = taskToRestore;
+      // Re-create the task
+      await handleCreateTask(taskWithoutDeletedAt);
+      setDeletedTasks(deletedTasks.filter(t => t.id !== taskId));
     }
   };
 
   const handlePermanentDelete = (taskId: string) => {
     if (!window.confirm('Permanently delete this task? This cannot be undone.')) return;
     setDeletedTasks(deletedTasks.filter(t => t.id !== taskId));
-  };
-
-  const handleToggleComplete = async (taskId: string, completed: boolean) => {
-    if (!user?.id) return;
-    try {
-      const result = await apiClient.updateTaskCompletion(user.id, taskId, completed);
-      if (result.data) {
-        setTasks(tasks.map(t => t.id === taskId ? result.data as any : t));
-      }
-    } catch (err) {
-      console.error('Error updating task:', err);
-      setError('Failed to update task');
-    }
   };
 
   const getDaysInMonth = (date: Date) => {
@@ -182,16 +194,6 @@ export default function Dashboard({ user }: DashboardProps) {
     });
   };
 
-  const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
-
-  const previousMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
-  };
-
   const getColorGradient = (index: number) => {
     const colors = [
       'linear-gradient(135deg, #fef3c7, #fde68a)',
@@ -202,12 +204,27 @@ export default function Dashboard({ user }: DashboardProps) {
     return colors[index % 4];
   };
 
+  // Filter tasks based on current filter
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'completed') return task.completed;
+    if (filter === 'important') return !task.completed;
+    return true; // 'all'
+  });
+
+  const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
+
+  const previousMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  };
+
   return (
     <>
       <Head>
-      
         <title>Dashboard - Todoify</title>
-      
       </Head>
       <div className={styles.container}>
         {/* Mobile Menu Button */}

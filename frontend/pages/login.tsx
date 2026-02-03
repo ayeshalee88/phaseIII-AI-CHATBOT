@@ -1,18 +1,21 @@
+import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { signIn, useSession } from "next-auth/react";
-import styles from "../styles/Login.module.css";
-import Image from "next/image";
+import { GetServerSideProps } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "./api/auth/[...nextauth]";
+import styles from "../styles/Login.module.css";   
+import Image from "next/image"; 
 
-export default function Login() {
+
+export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { data: session } = useSession();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -26,33 +29,17 @@ export default function Login() {
     if (result?.error) {
       setError("Invalid email or password");
       setLoading(false);
-      return;
-    }
-
-    if (result?.ok) router.push("/dashboard");
-  };
-
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError("");
-    
-    try {
-      await signIn("google", {
-        callbackUrl: "/dashboard",
-      });
-    } catch (err) {
-      setError("Google sign-in failed");
-      setLoading(false);
+    } else {
+      router.push("/dashboard");
     }
   };
 
-  if (session?.user?.id) {
-    router.push("/dashboard");
-    return null;
-  }
+  const handleGoogleLogin = () => {
+    signIn("google", { callbackUrl: "/dashboard" });
+  };
 
   return (
-    <div className={styles.loginContainer}>
+     <div className={styles.loginContainer}>
       <div></div>
       <div></div>
       <div></div>
@@ -67,7 +54,7 @@ export default function Login() {
         
         {/* Google Sign-In Button */}
         <button 
-          onClick={handleGoogleSignIn}
+          onClick={handleGoogleLogin}
           className={styles.googleButton}
           disabled={loading}
           type="button"
@@ -85,7 +72,7 @@ export default function Login() {
           <span>OR</span>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleLogin}>
           <div className={styles.inputGroup}>
             <label htmlFor="email">Email</label>
             <input

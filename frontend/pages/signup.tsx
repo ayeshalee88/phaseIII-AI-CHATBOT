@@ -1,89 +1,68 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { signIn } from "next-auth/react";
-import styles from "../styles/Login.module.css";
-import Image from "next/image";
+import { GetServerSideProps } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "./api/auth/[...nextauth]";
+import { prisma } from "@/lib/prisma";
+import styles from "../styles/Login.module.css";  
+import Image from "next/image"
 
-export default function Signup() {
+export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); 
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    // Validation
-    if (!email || !password || !confirmPassword) {
-      setError("All fields are required");
-      return;
-    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
     setLoading(true);
 
     try {
-      // Call backend signup endpoint
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      const res = await fetch(`${apiUrl}/auth/signup`, {
+      // Create user directly in Prisma (no FastAPI call)
+      const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setError(data.detail || "Signup failed");
+        const data = await res.json();
+        setError(data.error || "Signup failed");
         setLoading(false);
         return;
       }
 
-      // Signup successful, now auto-login
-      const loginResult = await signIn("credentials", {
+      // Auto login after signup
+      const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
-      if (loginResult?.error) {
-        router.push("/login");
-        return;
-      }
-
-      if (loginResult?.ok) {
+      if (result?.error) {
+        setError("Account created but login failed");
+      } else {
         router.push("/dashboard");
       }
-    } catch (err: any) {
-      setError(err.message || "Network error");
+    } catch (err) {
+      setError("Something went wrong");
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError("");
-    
-    try {
-      await signIn("google", {
-        callbackUrl: "/dashboard",
-      });
-    } catch (err) {
-      setError("Google sign-in failed");
-      setLoading(false);
-    }
+  const handleGoogleSignup = () => {
+    signIn("google", { callbackUrl: "/dashboard" });
   };
 
   return (
@@ -102,7 +81,7 @@ export default function Signup() {
         
         {/* Google Sign-In Button */}
         <button 
-          onClick={handleGoogleSignIn}
+          onClick={handleGoogleSignup}
           className={styles.googleButton}
           disabled={loading}
           type="button"
@@ -120,7 +99,7 @@ export default function Signup() {
           <span>OR</span>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSignup}>
           <div className={styles.inputGroup}>
             <label htmlFor="email">Email</label>
             <input
@@ -152,7 +131,7 @@ export default function Signup() {
               id="confirmPassword"
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => setConfirmPassword(e.target.value)} 
               required
               disabled={loading}
               autoComplete="new-password"
@@ -174,3 +153,19 @@ export default function Signup() {
     </div>
   );
 }
+
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getServerSession(context.req, context.res, authOptions);
+  
+  if (session) {
+    return {
+      redirect: {
+        destination: "/dashboard",
+        permanent: false,
+      },
+    };
+  }
+
+  return { props: {} };
+};

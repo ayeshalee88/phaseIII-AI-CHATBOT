@@ -1,25 +1,45 @@
-﻿import type { NextApiRequest, NextApiResponse } from "next";
+﻿import { NextApiRequest, NextApiResponse } from "next";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const response = await fetch(
-      `${process.env.API_URL}/api/auth/signup`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(req.body),
-      }
-    );
+    const { email, password, name } = req.body;
 
-    const data = await response.json();
-    return res.status(response.status).json(data);
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password required" });
+    }
 
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    // Create user (password is NOT stored, only for credentials provider)
+    const user = await prisma.user.create({
+      data: {
+        email,
+        name: name || email,
+      },
+    });
+
+    return res.status(201).json({
+      message: "User created successfully",
+      userId: user.id,
+    });
   } catch (error) {
-    console.error("Signup proxy error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Signup error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

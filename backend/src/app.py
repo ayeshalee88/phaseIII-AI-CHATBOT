@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.tasks import router as tasks_router
@@ -15,12 +16,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://todoapp-frontend-lime.vercel.app/")
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "https://*.vercel.app",
+        FRONTEND_URL,
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -31,7 +36,7 @@ app.add_middleware(
 add_exception_handlers(app)
 
 # Routers
-app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
 
 @app.get("/")

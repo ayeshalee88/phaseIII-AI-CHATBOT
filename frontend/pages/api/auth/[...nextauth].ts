@@ -1,148 +1,78 @@
-﻿
-import NextAuth, { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+﻿import NextAuth, { AuthOptions } from "next-auth";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma";
 
-export const authOptions: NextAuthOptions = {
+async function createOrGetUser(user: { email: string; name?: string }) {
+  let dbUser = await prisma.user.findUnique({ where: { email: user.email } });
+  if (!dbUser) {
+    dbUser = await prisma.user.create({
+      data: {
+        email: user.email,
+        name: user.name || user.email,
+      },
+    });
+  }
+  return dbUser;
+}
+
+export const authOptions: AuthOptions = {
+  adapter: PrismaAdapter(prisma),
   providers: [
-    // Google OAuth Provider
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+   CredentialsProvider({
+   
+  name: "Credentials",
+  credentials: {
+    email: { label: "Email", type: "email" },
+    password: { label: "Password", type: "password" },
+  },
+  async authorize(credentials) {
+    if (!credentials?.email || !credentials?.password) return null;
 
-    // Email/Password Provider (existing)
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          console.log("❌ Missing credentials");
-          return null;
-        }
+    // Simple validation - you can add bcrypt check here if needed
+    const user = await prisma.user.findUnique({
+      where: { email: credentials.email },
+    });
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-        const loginUrl = `${apiUrl}/auth/login`;
-        
-        console.log("🔐 Attempting login to:", loginUrl);
-        console.log("📧 Email:", credentials.email);
+    if (!user) return null;
 
-        try {
-          const res = await fetch(loginUrl, {
-            method: "POST",
-            headers: { 
-              "Content-Type": "application/json",
-              "Accept": "application/json",
-            },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          });
-
-          console.log("📡 Response status:", res.status);
-
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ detail: "Unknown error" }));
-            console.log("❌ Login failed:", errorData);
-            return null;
-          }
-
-          const data = await res.json();
-          console.log("✅ Login success! User ID:", data.user_id);
-
-          if (data.access_token && data.user_id) {
-            return {
-              id: data.user_id,
-              email: data.email,
-              accessToken: data.access_token,
-              name: data.email,
-            };
-          }
-
-          console.log("❌ Missing access_token or user_id in response");
-          return null;
-        } catch (error) {
-          console.error("❌ Network error during login:", error);
-          return null;
-        }
-      },
-    }),
+    // Return user if found
+    return user;
+  },
+}),
   ],
 
+  session: {
+    strategy: "jwt",
+  },
+
   callbacks: {
-    async signIn({ user, account, profile }) {
-      // Handle Google sign-in
-      if (account?.provider === "google") {
-        try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-          
-          // Check if user exists or create new user
-          const res = await fetch(`${apiUrl}/auth/google-signin`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: user.email,
-              name: user.name,
-              google_id: account.providerAccountId,
-            }),
-          });
-
-          if (!res.ok) {
-            console.error("Google sign-in failed");
-            return false;
-          }
-
-          const data = await res.json();
-          
-          // Store the access token and user_id
-          user.accessToken = data.access_token;
-          user.id = data.user_id;
-
-          return true;
-        } catch (error) {
-          console.error("Error during Google sign-in:", error);
-          return false;
-        }
-      }
-
-      return true;
-    },
-
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
-        token.accessToken = user.accessToken;
         token.id = user.id;
       }
       return token;
     },
-
     async session({ session, token }) {
-      if (token) {
-        session.accessToken = token.accessToken as string;
+      if (token && session.user) {
         session.user.id = token.id as string;
       }
       return session;
     },
   },
 
-  session: { 
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  
-  pages: { 
+  pages: {
     signIn: "/login",
     error: "/login",
   },
-  
+
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
 };
 
 export default NextAuth(authOptions);
-
-
