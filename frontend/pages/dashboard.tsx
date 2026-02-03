@@ -47,12 +47,6 @@ export default function Dashboard({ user }: DashboardProps) {
   const [showDeletedModal, setShowDeletedModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  // Set token when session is available
-  useEffect(() => {
-    if (session?.accessToken) {
-      apiClient.setToken(session.accessToken);
-    }
-  }, [session]);
 
   // Fetch tasks when user and session are ready
   useEffect(() => {

@@ -1,120 +1,119 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
+type ApiResult<T> = {
+  data?: T;
+  error?: string;
+};
+
 export const apiClient = {
-  // 🔹 Get all tasks
-  async getTasks(userId: string) {
-    const res = await fetch(
-      `${API_URL}/users/${userId}/tasks`,
-      { credentials: "include" }
-    );
+  // GET TASKS
+  async getTasks(userId: string): Promise<ApiResult<any[]>> {
+    try {
+      const res = await fetch(`${API_URL}/api/users/${userId}/tasks`);
 
-    if (!res.ok) {
-      throw new Error(`Failed to fetch tasks: ${res.status}`);
-    }
-
-    return res.json();
-  },
-
-  // 🔹 Get single task
-  async getTask(userId: string, taskId: string) {
-    const res = await fetch(
-      `${API_URL}/users/${userId}/tasks/${taskId}`,
-      { credentials: "include" }
-    );
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch task: ${res.status}`);
-    }
-
-    return res.json();
-  },
-
-  // 🔹 Create task
-  async createTask(userId: string, task: {
-    title: string;
-    description?: string;
-  }) {
-    const res = await fetch(
-      `${API_URL}/users/${userId}/tasks`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(task),
+      if (!res.ok) {
+        return { error: `Failed to fetch tasks: ${res.status}` };
       }
-    );
 
-    if (!res.ok) {
-      throw new Error(`Failed to create task: ${res.status}`);
+      const data = await res.json();
+      return { data };
+    } catch (err) {
+      return { error: 'Network error while fetching tasks' };
     }
-
-    return res.json();
   },
 
-  // 🔹 Update task
+  // CREATE TASK
+  async createTask(userId: string, task: any): Promise<ApiResult<any>> {
+    try {
+      const res = await fetch(`${API_URL}/api/users/${userId}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(task),
+      });
+
+      if (!res.ok) {
+        return { error: `Failed to create task: ${res.status}` };
+      }
+
+      const data = await res.json();
+      return { data };
+    } catch (err) {
+      return { error: 'Network error while creating task' };
+    }
+  },
+
+  // UPDATE TASK
   async updateTask(
     userId: string,
     taskId: string,
-    updates: {
-      title?: string;
-      description?: string;
-      completed?: boolean;
-    }
-  ) {
-    const res = await fetch(
-      `${API_URL}/users/${userId}/tasks/${taskId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(updates),
+    task: any
+  ): Promise<ApiResult<any>> {
+    try {
+      const res = await fetch(
+        `${API_URL}/api/users/${userId}/tasks/${taskId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(task),
+        }
+      );
+
+      if (!res.ok) {
+        return { error: `Failed to update task: ${res.status}` };
       }
-    );
 
-    if (!res.ok) {
-      throw new Error(`Failed to update task: ${res.status}`);
+      const data = await res.json();
+      return { data };
+    } catch (err) {
+      return { error: 'Network error while updating task' };
     }
-
-    return res.json();
   },
 
-  // 🔹 Mark task complete/incomplete
-  async toggleComplete(
+  // DELETE TASK
+  async deleteTask(
+    userId: string,
+    taskId: string
+  ): Promise<ApiResult<null>> {
+    try {
+      const res = await fetch(
+        `${API_URL}/api/users/${userId}/tasks/${taskId}`,
+        { method: 'DELETE' }
+      );
+
+      if (!res.ok) {
+        return { error: `Failed to delete task: ${res.status}` };
+      }
+
+      return { data: null };
+    } catch (err) {
+      return { error: 'Network error while deleting task' };
+    }
+  },
+
+  // TOGGLE COMPLETE
+  async updateTaskCompletion(
     userId: string,
     taskId: string,
     completed: boolean
-  ) {
-    const res = await fetch(
-      `${API_URL}/users/${userId}/tasks/${taskId}/complete`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ completed }),
+  ): Promise<ApiResult<any>> {
+    try {
+      const res = await fetch(
+        `${API_URL}/api/users/${userId}/tasks/${taskId}/complete`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed }),
+        }
+      );
+
+      if (!res.ok) {
+        return { error: `Failed to update task: ${res.status}` };
       }
-    );
 
-    if (!res.ok) {
-      throw new Error(`Failed to update completion: ${res.status}`);
+      const data = await res.json();
+      return { data };
+    } catch (err) {
+      return { error: 'Network error while updating completion' };
     }
-
-    return res.json();
-  },
-
-  // 🔹 Delete task
-  async deleteTask(userId: string, taskId: string) {
-    const res = await fetch(
-      `${API_URL}/users/${userId}/tasks/${taskId}`,
-      {
-        method: "DELETE",
-        credentials: "include",
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error(`Failed to delete task: ${res.status}`);
-    }
-
-    return res.json();
   },
 };
