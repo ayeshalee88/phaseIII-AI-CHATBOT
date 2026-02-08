@@ -1,11 +1,21 @@
 ﻿import React, { createContext, useContext, ReactNode } from 'react';
-import NextAuthReact from 'next-auth/react';
 import { useRouter } from 'next/router';
 
-// Extract functions with type assertion to bypass TypeScript errors for Vercel deployment
-const signIn = (NextAuthReact as any).signIn;
-const signOut = (NextAuthReact as any).signOut;
-const useSession = (NextAuthReact as any).useSession;
+// Dynamic imports for next-auth functions to handle potential runtime issues during Vercel deployment
+const getSignIn = async () => {
+  const { signIn } = await import('next-auth/react');
+  return signIn;
+};
+
+const getSignOut = async () => {
+  const { signOut } = await import('next-auth/react');
+  return signOut;
+};
+
+const getUseSession = async () => {
+  const { useSession } = await import('next-auth/react');
+  return useSession;
+};
 
 interface User {
   id: string;
@@ -31,11 +41,13 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [session, status] = useSession();
+  const useSessionHook = typeof window !== 'undefined' ? require('next-auth/react').useSession : () => [null, 'unauthenticated'];
+  const [session, status] = useSessionHook();
   const router = useRouter();
 
   const login = async (email: string, password: string) => {
-    const result = await signIn('credentials', {
+    const signInFunc = await getSignIn();
+    const result = await signInFunc('credentials', {
       email,
       password,
       redirect: false,
@@ -66,7 +78,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // After successful signup, log them in
-      const result = await signIn('credentials', {
+      const signInFunc = await getSignIn();
+      const result = await signInFunc('credentials', {
         email,
         password,
         redirect: false,
@@ -86,11 +99,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const loginWithGoogle = async () => {
-    await signIn('google', { callbackUrl: '/dashboard' }); // ✅ Google login also goes to dashboard
+    const signInFunc = await getSignIn();
+    await signInFunc('google', { callbackUrl: '/dashboard' }); // ✅ Google login also goes to dashboard
   };
 
   const logout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    const signOutFunc = await getSignOut();
+    await signOutFunc({ callbackUrl: '/login' });
   };
 
   const value = {

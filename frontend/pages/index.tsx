@@ -1,21 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router'; 
 import { useAuth } from '../contexts/AuthContext';
-import NextAuthReact from 'next-auth/react';
-
-const useSession = (NextAuthReact as any).useSession; 
 import Head from 'next/head';
 import styles from '../styles/HomePage.module.css';
 import Image from 'next/image';
 import Script from 'next/script';
 
+// Dynamic import for useSession to handle potential runtime issues
+let cachedUseSession: any = null;
+
 export default function Home() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-
-  return (
+  
+  // Initialize useSession dynamically
+  if (typeof window !== 'undefined' && !cachedUseSession) {
+    const { useSession } = require('next-auth/react');
+    cachedUseSession = useSession;
+  }
+  
+  const { data: session, status } = cachedUseSession ? cachedUseSession() : [{}, 'loading'];
     <>
       <Head>
         <title>Todoify - Professional Task Management</title>
