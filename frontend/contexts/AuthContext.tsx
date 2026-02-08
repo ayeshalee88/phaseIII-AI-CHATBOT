@@ -1,5 +1,5 @@
 ﻿import React, { createContext, useContext, ReactNode } from 'react';
-import { signIn, signOut, useSession } from 'next-auth/react';
+import { signIn, signOut, useSession } from 'next-auth/client';
 import { useRouter } from 'next/router';
 
 interface User {

@@ -39,14 +39,12 @@ export const authOptions: AuthOptions = {
           const userData = await response.json();
           console.log("Successfully authenticated Google user:", userData.email);
 
-          // Return user data with tokens for the session
+          // Return standard user data for the session (tokens will be handled in jwt callback)
           return {
             id: userData.id || userData.user_id,
             name: userData.name || profile.name,
             email: userData.email || profile.email,
             image: profile.picture,
-            accessToken: userData.access_token, // Include the access token from backend
-            refreshToken: userData.refresh_token, // Include the refresh token from backend
           };
         } catch (error) {
           console.error("Error during Google sign-in to backend:", error);
@@ -97,8 +95,8 @@ export const authOptions: AuthOptions = {
             id: userData.id || userData.user_id,
             email: userData.email,
             name: userData.name || userData.email.split('@')[0],
-            accessToken: userData.access_token, // Include the access token
-            refreshToken: userData.refresh_token, // Include the refresh token
+            accessToken: userData.access_token,
+            refreshToken: userData.refresh_token,
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -113,20 +111,55 @@ export const authOptions: AuthOptions = {
   },
 
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      // Handle the token exchange after successful sign-in with Google
+      if (account?.provider === 'google' && profile) {
+        try {
+          const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          const response = await fetch(`${BACKEND_API_URL}/api/google-signin`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: profile.email,
+              name: profile.name,
+              google_id: (profile as any).sub,
+            }),
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            
+            // Store tokens in user object temporarily
+            (user as any).accessToken = userData.access_token;
+            (user as any).refreshToken = userData.refresh_token;
+          } else {
+            console.error("Google sign-in to backend failed:", response.status);
+            return false; // Deny sign-in
+          }
+        } catch (error) {
+          console.error("Error during Google sign-in to backend:", error);
+          return false; // Deny sign-in
+        }
+      }
+      
+      return true; // Allow sign-in
+    },
+    async jwt({ token, user, account }) {
       if (user) {
-        // Add user info and access token to the JWT token
+        // Add user info to the JWT token
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        if (user.accessToken) {
-          token.accessToken = user.accessToken;
+        
+        // Add tokens from the user object (set in signIn callback for Google, or in authorize for Credentials)
+        if ((user as any).accessToken) {
+          token.accessToken = (user as any).accessToken;
+          token.refreshToken = (user as any).refreshToken;
+          // Set access token expiry to 14 minutes (just before backend token expires at 15 mins)
+          token.accessTokenExpires = Date.now() + 14 * 60 * 1000;
         }
-        if (user.refreshToken) {
-          token.refreshToken = user.refreshToken;
-        }
-        // Set access token expiry to 14 minutes (just before backend token expires at 15 mins)
-        token.accessTokenExpires = Date.now() + 14 * 60 * 1000;
       }
 
       // If token is expired, try to refresh it

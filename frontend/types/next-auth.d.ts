@@ -1,4 +1,4 @@
-import { DefaultSession } from "next-auth";
+import { DefaultSession, DefaultUser } from "next-auth";
 
 declare module "next-auth" {
   /**
@@ -14,6 +14,11 @@ declare module "next-auth" {
       /** The user's name. */
       name: string;
     } & DefaultSession["user"];
+  }
+
+  interface User extends DefaultUser {
+    accessToken?: string;
+    refreshToken?: string;
   }
 
   /** Returned by the `jwt` callback and used in the `session` callback */
