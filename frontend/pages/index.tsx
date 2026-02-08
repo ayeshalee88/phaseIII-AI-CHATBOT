@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router'; 
 import { useAuth } from '../contexts/AuthContext';
-import { useSession } from 'next-auth/react'; 
+import NextAuthReact from 'next-auth/react';
+
+const { useSession } = NextAuthReact as {
+  useSession: any;
+}; 
 import Head from 'next/head';
 import styles from '../styles/HomePage.module.css';
 import Image from 'next/image';

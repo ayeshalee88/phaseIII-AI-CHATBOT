@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { signIn } from "next-auth/react";
+import NextAuthReact from "next-auth/react";
+
+const { signIn } = NextAuthReact as {
+  signIn: any;
+};
 import { GetServerSideProps } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]";

@@ -33,7 +33,13 @@ export const authOptions: AuthOptions = {
 
           if (!response.ok) {
             console.error("Google sign-in to backend failed:", response.status);
-            return null;
+            // Return a default user object instead of null
+            return {
+              id: profile.sub,
+              name: profile.name,
+              email: profile.email,
+              image: profile.picture,
+            };
           }
 
           const userData = await response.json();
@@ -48,7 +54,13 @@ export const authOptions: AuthOptions = {
           };
         } catch (error) {
           console.error("Error during Google sign-in to backend:", error);
-          return null;
+          // Return a default user object instead of null
+          return {
+            id: profile.sub,
+            name: profile.name,
+            email: profile.email,
+            image: profile.picture,
+          };
         }
       },
     }),

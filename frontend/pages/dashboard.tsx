@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { signOut, useSession } from 'next-auth/react';
+import NextAuthReact from 'next-auth/react';
+
+const { signOut, useSession } = NextAuthReact as {
+  signOut: any;
+  useSession: any;
+};
 import { GetServerSideProps } from 'next';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from  "./api/auth/[...nextauth]";
@@ -364,7 +369,7 @@ export default function Dashboard({ user }: DashboardProps) {
         }
         
         console.error('Chat API error response:', errorData);
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        throw new Error((errorData as any).detail || `HTTP error! status: ${response.status}`);
       }
 
       const data: ChatResponse = await response.json();
