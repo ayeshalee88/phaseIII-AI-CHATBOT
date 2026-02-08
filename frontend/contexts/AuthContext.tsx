@@ -1,12 +1,31 @@
 ﻿import React, { createContext, useContext, ReactNode } from 'react';
 import { useRouter } from 'next/router';
 
-// Import the entire module and access functions with type assertion to bypass TypeScript errors
-import NextAuthReact from 'next-auth/react';
+// Dynamic import for next-auth functions to handle potential runtime issues in Vercel
+const getSignIn = () => {
+  if (typeof window !== 'undefined') {
+    const { signIn } = require('next-auth/react');
+    return signIn;
+  }
+  return () => Promise.resolve();
+};
 
-const signIn = (NextAuthReact as any).signIn;
-const signOut = (NextAuthReact as any).signOut;
-const useSession = (NextAuthReact as any).useSession;
+const getSignOut = () => {
+  if (typeof window !== 'undefined') {
+    const { signOut } = require('next-auth/react');
+    return signOut;
+  }
+  return () => Promise.resolve();
+};
+
+const getUseSession = () => {
+  if (typeof window !== 'undefined') {
+    const { useSession } = require('next-auth/react');
+    return useSession;
+  }
+  // Return a mock session hook for SSR
+  return () => [null, 'loading'];
+};
 
 interface User {
   id: string;
@@ -32,11 +51,12 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [session, status] = useSession();
+  const [session, status] = getUseSession()();
   const router = useRouter();
 
   const login = async (email: string, password: string) => {
-    const result = await signIn('credentials', {
+    const signInFunc = getSignIn();
+    const result = await signInFunc('credentials', {
       email,
       password,
       redirect: false,
@@ -67,7 +87,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // After successful signup, log them in
-      const result = await signIn('credentials', {
+      const signInFunc = getSignIn();
+      const result = await signInFunc('credentials', {
         email,
         password,
         redirect: false,
@@ -87,11 +108,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const loginWithGoogle = async () => {
-    await signIn('google', { callbackUrl: '/dashboard' }); // ✅ Google login also goes to dashboard
+    const signInFunc = getSignIn();
+    await signInFunc('google', { callbackUrl: '/dashboard' }); // ✅ Google login also goes to dashboard
   };
 
   const logout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    const signOutFunc = getSignOut();
+    await signOutFunc({ callbackUrl: '/login' });
   };
 
   const value = {
