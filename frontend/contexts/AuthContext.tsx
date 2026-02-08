@@ -1,5 +1,5 @@
 ﻿import React, { createContext, useContext, ReactNode } from 'react';
-import { signIn, signOut, useSession } from 'next-auth/client';
+import { signIn, signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 
 interface User {
@@ -26,7 +26,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const { data: session, status } = useSession();
+  const [session, status] = useSession();
   const router = useRouter();
 
   const login = async (email: string, password: string) => {
@@ -93,6 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       id: session.user.id as string,
       email: session.user.email!,
       name: session.user.name || undefined,
+      image: session.user.image || undefined,
     } : null,
     login,
     signup,
