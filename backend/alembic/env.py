@@ -2,7 +2,9 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from models.task_models import User, Task
+from models.task_models import Task
+from models.user_model import User
+from models.conversation_models import Conversation, Message, ToolInvocation
 from core.config import settings
 
 # this is the Alembic Config object, which provides

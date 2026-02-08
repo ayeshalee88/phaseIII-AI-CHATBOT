@@ -1,6 +1,4 @@
 ﻿import { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,39 +19,36 @@ export default async function handler(
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    // Forward the signup request to the backend API
+    const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:8001";
+    const response = await fetch(`${BACKEND_API_URL}/api/signup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        name: name || email.split('@')[0],
+      }),
     });
 
-    if (existingUser) {
-      return res.status(400).json({ error: "User already exists" });
+    if (!response.ok) {
+      const errorData = await response.json();
+      return res.status(response.status).json({ error: errorData.detail || "Signup failed" });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user with hashed password
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name: name || email.split('@')[0],
-        password: hashedPassword, // ← IMPORTANT: Store hashed password
-      },
-    });
+    const userData = await response.json();
 
     return res.status(201).json({
       message: "User created successfully",
-      userId: user.id,
+      userId: userData.id || userData.user_id,
+      access_token: userData.access_token,
+      refresh_token: userData.refresh_token,
     });
   } catch (error: any) {
     console.error("Signup error:", error);
-    
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: "User already exists" });
-    }
-    
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Internal server error",
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });

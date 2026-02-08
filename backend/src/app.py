@@ -1,14 +1,15 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.tasks import router as tasks_router
-from api.auth import router as auth_router
-
 
 # Import API routers
 from api.auth import router as auth_router
 from api.tasks import router as tasks_router
+from api.chat import router as chat_router
 from core.middleware import add_exception_handlers
+
+# Import database configuration
+from database.config import create_db_and_tables
 
 app = FastAPI(
     title="Todo API",
@@ -35,9 +36,15 @@ app.add_middleware(
 # Exception handlers
 add_exception_handlers(app)
 
-# Routers
+# Initialize database tables
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
 
+# Routers
+app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
+app.include_router(chat_router, prefix="/api", tags=["chat"])
 
 @app.get("/")
 def read_root():
@@ -45,4 +52,4 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("src.app:app", host="0.0.0.0", port=8000, reload=True)

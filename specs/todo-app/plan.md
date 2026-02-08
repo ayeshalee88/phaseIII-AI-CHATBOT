@@ -1,136 +1,178 @@
-# Phase I Implementation Plan - In-Memory Python Console Todo App
+# Phase III Implementation Plan - Todo AI Chatbot using MCP and OpenAI Agents
 
-## Overview
-This document outlines the implementation plan for Phase I of the Todo Application project, which involves creating a command-line Todo application with in-memory storage using Python standard library only.
+## Current State Analysis
 
-## Specification Confirmation
+Based on review of existing frontend and backend structure:
+- **Frontend**: Next.js app with dashboard, login, signup pages
+- **Backend**: FastAPI with SQLModel, supporting task CRUD operations and authentication
+- **Database**: Neon PostgreSQL with task and user models
+- **Authentication**: Better Auth integration
 
-### Scope Lock
-- **In Scope:**
-  - Add tasks with title and description
-  - List all tasks with unique ID and completion status
-  - Update task title and description by ID
-  - Delete tasks by ID
-  - Toggle task completion state by ID
-  - In-memory storage only (no files or databases)
-  - Python 3.13+ with standard library only
-  - Console interface only
-  - Clean project structure with src/ folder
+## High-Level Architecture Sketch
 
-- **Out of Scope:**
-  - Persistence (files or DB)
-  - Web or GUI interface
-  - AI features
-  - Authentication or multi-user support
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              Frontend Layer                                     │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  OpenAI ChatKit UI                    │                                         │
+│  - Natural language interface         │                                         │
+│  - Conversation display               │                                         │
+│  - Real-time updates                  │                                         │
+│                                       │                                         │
+│  API Client                          │                                         │
+│  - /api/{user_id}/chat endpoint      │                                         │
+│  - Token management                  │                                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                            Backend Service Layer                               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  FastAPI Backend                     │  │  MCP Server                          │
+│  - /api/{user_id}/chat endpoint     │  │  - Tool definitions                   │
+│  - Stateless conversation handler   │  │  - Task operation tools              │
+│  - Request reconstruction            │  │  - Database operations               │
+│  - Response aggregation             │  │  - Statelessness guarantee           │
+│  - Authentication validation        │  │                                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                             Data Layer                                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  Neon Serverless PostgreSQL          │                                         │
+│  - Conversation storage              │                                         │
+│  - Message history                   │                                         │
+│  - Task data with lifecycle meta     │                                         │
+│  - User authentication data         │                                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         AI Agent Layer                                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  OpenAI Agents SDK                   │                                         │
+│  - Natural language processing       │                                         │
+│  - Tool selection logic              │                                         │
+│  - Action orchestration              │                                         │
+│  - Response generation              │                                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
 
-## Architecture Decisions
+## System Responsibilities
 
-### 1. Class Structure
-- `Task` class: Represents individual todo items with ID, title, description, completion status, and timestamps
-- `TodoApp` class: Handles business logic and in-memory storage using dictionaries
-- `TodoCLI` class: Provides command-line interface and user interaction
-- Main function: Entry point for the application
+### Chat Handling (FastAPI Backend)
+- **Stateless chat endpoint** (`POST /api/{user_id}/chat`)
+  - Accept user messages and user_id
+  - Reconstruct conversation history from database
+  - Invoke OpenAI agent with conversation context
+  - Aggregate responses and tool calls
+  - Persist conversation history to database
+- **Authentication validation** via Better Auth tokens
+- **Request/response structure** includes conversation_id, messages, and tool invocations
 
-### 2. Storage Strategy
-- In-memory storage using Python dictionaries for O(1) access
-- Sequential ID assignment starting from 1
-- Automatic ID management to prevent conflicts
+### Agent Orchestration (OpenAI Agents SDK)
+- **Natural language intent interpretation** from user messages
+- **Tool selection** based on conversation context and intent
+- **Action orchestration** through chained MCP tool calls
+- **Response generation** with natural language confirmations
+- **Error handling** for ambiguous or invalid requests
 
-### 3. Command Structure
-- Intuitive command names: add, list, view, update, delete, complete, incomplete, toggle
-- Consistent argument format across commands
-- Helpful error messages for invalid inputs
+### MCP Tooling (Official MCP SDK)
+- **Expose task operations** as callable tools (add, list, update, complete, delete)
+- **Parameter validation** for all tool inputs
+- **Database operations** for task management
+- **Statelessness** - no session or in-memory storage
+- **Tool contracts** with clear input/output schemas
 
-## Implementation Approach
+### Persistence (Neon Serverless PostgreSQL + SQLModel)
+- **Conversation storage** with user-scoped isolation
+- **Message history** with role-based attribution (user/assistant/tool)
+- **Tool invocation logs** for audit and debugging
+- **Deterministic reconstruction** of conversation context
 
-### 1. Core Data Model
-- Implemented `Task` class with properties: id, title, description, completed, timestamps
-- Added serialization methods for potential future extensions
+## Development Approach
 
-### 2. Business Logic Layer
-- Implemented `TodoApp` class with all required CRUD operations
-- Added proper validation and error handling
-- Included timestamp tracking for creation and updates
+### Research-Concurrent Development Approach
 
-### 3. User Interface Layer
-- Implemented `TodoCLI` class with formatted output
-- Added comprehensive command parsing and validation
-- Included help system and user-friendly feedback
+#### Research Areas to Investigate While Building:
+1. **OpenAI Agents SDK Patterns** - Best practices for tool orchestration
+   - Reference: OpenAI API Documentation (OpenAI, 2023)
+2. **MCP SDK Implementation** - Official Model Context Protocol patterns
+   - Reference: MCP Specification (Anthropic, 2024)
+3. **ChatKit Integration** - Optimal conversational UI patterns
+   - Reference: OpenAI ChatKit Documentation (OpenAI, 2024)
 
-## Code Quality Standards
+#### Foundation Phase:
+- MCP tool contracts definition
+- Database schema extensions for conversations
+- Agent initialization and configuration
+- Authentication integration points
 
-### 1. Type Safety
-- Full type annotations throughout the codebase
-- Clear function signatures and return types
-- Proper handling of optional values
+#### Analysis Phase:
+- Natural language intent mapping
+- Error handling strategies
+- Performance considerations for state reconstruction
+- Scalability assessment
 
-### 2. Error Handling
-- Validation for required fields (e.g., non-empty titles)
-- Proper handling of invalid IDs
-- Clear error messages for users
+#### Synthesis Phase:
+- End-to-end flow validation
+- Performance tuning
+- Production readiness checks
 
-### 3. Cross-Platform Compatibility
-- Avoided Unicode characters that cause issues on Windows
-- Used ASCII equivalents for visual indicators
-- Proper encoding handling
+## Key Decisions Requiring Documentation
+
+| Decision | Options | Tradeoffs | Recommendation |
+|----------|---------|-----------|----------------|
+| MCP Server Deployment | Separate server vs Embedded in FastAPI | Modularity vs Complexity | Embedded initially, separate later |
+| Conversation Reconstruction | Full history vs Windowed context | Completeness vs Performance | Windowed with configurable size |
+| Tool Call Transparency | Visible in UI vs Internal logging | Transparency vs UI Cleanliness | Both - visible to user, logged internally |
+| Authentication Boundary | Chat endpoint vs MCP tools | Simplicity vs Security | Chat endpoint for simplicity |
+| Agent State Management | Persistent agent vs New instance per request | Performance vs Statelessness | New instance per request (stateless) |
 
 ## Testing Strategy
 
-### 1. Unit Testing
-- Verified all CRUD operations work correctly
-- Tested edge cases and error conditions
-- Confirmed proper state management
+| Test Category | Validation Method | Success Criteria |
+|---------------|-------------------|------------------|
+| Natural Language Processing | Send varied commands ("add a task", "show my tasks", "mark #1 complete") | Agent selects correct MCP tools |
+| Task Lifecycle Operations | Full CRUD via conversation | All operations work through AI interface |
+| Conversation Persistence | Server restart test | Conversations resume correctly |
+| Authentication | Unauthorized requests | Proper rejection of unauthenticated access |
+| Tool Invocation | Monitor tool call logs | All actions map to valid MCP tools |
+| Error Handling | Invalid inputs and commands | Graceful handling without crashes |
 
-### 2. Integration Testing
-- Verified command-line interface works properly
-- Tested all commands with various inputs
-- Confirmed application starts and runs correctly
+## Quality Validation Framework
 
-## Exit Criteria Verification
+Based on the Phase III Constitution, validation will ensure:
+- ✅ **Agent-First Architecture**: All task operations via MCP tools
+- ✅ **Strict Statelessness**: No in-memory conversation storage
+- ✅ **Natural Language Fidelity**: Intent correctly interpreted
+- ✅ **Separation of Concerns**: Clear boundaries maintained
+- ✅ **Deterministic Persistence**: Reliable conversation reconstruction
 
-### ✅ All specified features implemented:
-- Add tasks with title and description ✓
-- List all tasks with unique ID and completion status ✓
-- Update task title and description by ID ✓
-- Delete tasks by ID ✓
-- Toggle task completion state by ID ✓
+## Technical Implementation Phases
 
-### ✅ Technical requirements met:
-- In-memory storage only ✓
-- Python standard library only ✓
-- Console interface only ✓
-- No external dependencies ✓
+### Phase 1: Infrastructure Setup
+- Extend database schema for conversation history
+- Implement MCP tool server with task operations
+- Set up OpenAI agent configuration
 
-### ✅ Project structure complete:
-- `/src/todo_app.py` with main application ✓
-- `README.md` with setup and usage instructions ✓
-- `CLAUDE.md` with Claude Code rules ✓
-- `run.py` entry point script ✓
-- `/history/prompts/general` directory structure ✓
+### Phase 2: Core Integration
+- Connect FastAPI chat endpoint to OpenAI agent
+- Implement conversation history reconstruction
+- Add authentication validation
 
-## Risk Mitigation
+### Phase 3: UI Enhancement
+- Replace existing UI with OpenAI ChatKit
+- Add conversation display and input handling
+- Show tool invocations in chat interface
 
-### 1. Platform Compatibility
-- Tested on Windows environment to avoid encoding issues
-- Used ASCII characters instead of Unicode for cross-platform support
+### Phase 4: Testing & Optimization
+- Comprehensive testing of all natural language commands
+- Performance optimization for conversation reconstruction
+- Error handling and edge case validation
 
-### 2. Future Extensibility
-- Clean separation of concerns allows for easy extension
-- Proper abstractions in place for potential persistence layer
-
-### 3. Maintainability
-- Clear documentation and code organization
-- Comprehensive comments where needed
-- Following Python best practices
-
-## Success Metrics
-
-- Application runs successfully via console ✓
-- All 5 basic Todo features implemented and tested ✓
-- Code generated exclusively through Claude Code ✓
-- Project structure follows clean Python conventions ✓
-- Spec history and agentic iterations are reviewable ✓
-
-## Next Steps
-
-Phase I is complete and ready for verification. The application is fully functional and meets all specified requirements. Ready to proceed to Phase II with persistent storage and web interface.
+## References
+- Anthropic. (2024). *Model Context Protocol Specification*. Anthropic.
+- OpenAI. (2023). *OpenAI API Documentation*. OpenAI.
+- OpenAI. (2024). *OpenAI ChatKit Documentation*. OpenAI.

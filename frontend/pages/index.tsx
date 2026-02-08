@@ -46,7 +46,6 @@ export default function Home() {
           
           {/* Desktop Navigation */}
           <div className={styles.navLinks}>
-            <a href="#features" className={styles.navItem}>Features</a>
             <a href="/signup" className={styles.navLogin}>Sign In</a>
             <a href="/login" className={styles.navSignup}>Dashboard</a>
           </div>

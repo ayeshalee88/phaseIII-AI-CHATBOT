@@ -23,7 +23,8 @@ def create_task(
     task: TaskCreate,
     session: Session = Depends(get_session)
 ):
-    db_task = Task(**task.dict(), user_id=user_id)
+    # Create task with user_id
+    db_task = Task(**task.model_dump(), user_id=user_id)
     session.add(db_task)
     session.commit()
     session.refresh(db_task)
@@ -110,3 +111,9 @@ def update_task_completion(
     session.commit()
     session.refresh(task)
     return task
+
+
+# Health check endpoint
+@router.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "tasks-api"}

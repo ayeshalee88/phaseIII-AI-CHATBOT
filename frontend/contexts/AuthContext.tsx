@@ -47,8 +47,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signup = async (email: string, password: string) => {
     try {
-      // Create the user account
-      const response = await fetch('/api/auth/signup', {
+      // Create the user account via backend API
+      const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+      const response = await fetch(`${BACKEND_API_URL}/api/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -56,7 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Signup failed');
+        throw new Error(error.detail || 'Signup failed');
       }
 
       // After successful signup, log them in

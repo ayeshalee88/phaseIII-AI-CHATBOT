@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { GetServerSideProps } from 'next';
 import { getServerSession } from "next-auth/next";
@@ -25,6 +25,35 @@ interface DeletedTask extends Task {
   deleted_at: string;
 }
 
+interface Message {
+  id: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  timestamp: string;
+  tool_calls?: Array<{
+    id: string;
+    function: {
+      name: string;
+      arguments: string;
+    };
+    type: string;
+  }>;
+}
+
+interface ChatResponse {
+  conversation_id: string;
+  message: string;
+  tool_calls?: Array<{
+    id: string;
+    function: {
+      name: string;
+      arguments: string;
+    };
+    type: string;
+  }>;
+  timestamp: string;
+}
+
 interface DashboardProps {
   user: {
     id: string;
@@ -47,6 +76,24 @@ export default function Dashboard({ user }: DashboardProps) {
   const [showDeletedModal, setShowDeletedModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  // AI Chat State
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
 
   // Fetch tasks when user and session are ready
   useEffect(() => {
@@ -57,7 +104,10 @@ export default function Dashboard({ user }: DashboardProps) {
   }, [session?.user?.id]);
 
   const fetchTasks = async () => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) {
+      console.log('No session user id available');
+      return;
+    }
     
     try {
       console.log('Fetching tasks...');
@@ -66,13 +116,16 @@ export default function Dashboard({ user }: DashboardProps) {
       
       const result = await apiClient.getTasks(session.user.id);
       
-      if (result.error) throw new Error(result.error);
+      if (result.error) {
+        console.error('API error:', result.error);
+        throw new Error(result.error);
+      }
       
       console.log('Tasks fetched successfully:', result.data);
       setTasks((result.data as Task[]) || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching tasks:', err);
-      setError('Failed to fetch tasks');
+      setError(`Failed to fetch tasks: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -92,9 +145,9 @@ export default function Dashboard({ user }: DashboardProps) {
         await fetchTasks();
         setShowForm(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Create task error:', err);
-      setError('Failed to create task');
+      setError(`Failed to create task: ${err.message}`);
     }
   };
 
@@ -110,9 +163,9 @@ export default function Dashboard({ user }: DashboardProps) {
         setEditingTask(null);
         setShowForm(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Update task error:', err);
-      setError('Failed to update task');
+      setError(`Failed to update task: ${err.message}`);
     }
   };
 
@@ -132,9 +185,9 @@ export default function Dashboard({ user }: DashboardProps) {
       await apiClient.deleteTask(session.user.id, taskId);
       // Refresh tasks list
       await fetchTasks();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete task error:', err);
-      setError('Failed to delete task');
+      setError(`Failed to delete task: ${err.message}`);
     }
   };
 
@@ -146,9 +199,9 @@ export default function Dashboard({ user }: DashboardProps) {
         // Refresh tasks list
         await fetchTasks();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating task:', err);
-      setError('Failed to update task');
+      setError(`Failed to update task: ${err.message}`);
     }
   };
 
@@ -215,6 +268,159 @@ export default function Dashboard({ user }: DashboardProps) {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
   };
 
+  // AI Chat Functions
+  const handleSendMessage = async () => {
+    // Debug logging
+    console.log('Session object:', session);
+    console.log('Session access token:', session?.accessToken);
+    console.log('Session user:', session?.user);
+    console.log('Session user ID:', session?.user?.id);
+
+    if (!inputMessage.trim() || chatLoading) {
+      console.log('Message validation failed:', {
+        hasInput: !!inputMessage.trim(),
+        isLoading: chatLoading,
+        hasSession: !!session,
+        hasUserId: !!session?.user?.id
+      });
+      return;
+    }
+
+    // Validate that we have the required session data
+    if (!session?.user?.id) {
+      console.error('No user ID in session');
+      setChatError('Authentication error: No user ID found');
+      return;
+    }
+
+    if (!session?.accessToken) {
+      console.error('No access token in session');
+      alert('Authentication error: Access token not found. Please log out and log back in.');
+      setChatError('Authentication error: Access token not found');
+      return;
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: inputMessage,
+      timestamp: new Date().toISOString()
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setChatLoading(true);
+    setChatError(null);
+
+    try {
+      // Get the actual user ID from the session
+      const userId = session.user.id;
+
+      // Use the same API_URL as defined in api.ts
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      
+      // Function to make the API call
+      const makeChatRequest = async (token: string) => {
+        console.log('Making chat API call to:', `${API_URL}/api/${userId}/chat`);
+        console.log('Using access token:', token.substring(0, 10) + '...'); // Log only first 10 chars for security
+
+        return await fetch(`${API_URL}/api/${userId}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ message: inputMessage })
+        });
+      };
+
+      let response = await makeChatRequest(session.accessToken);
+
+      // If we get a 401, the token is likely expired, so we need to re-authenticate
+      if (response.status === 401) {
+        console.log('Received 401, token likely expired. Redirecting to login...');
+        
+        // Show a user-friendly message
+        alert('Your session has expired. Please log in again to continue using the AI assistant.');
+        
+        // Redirect to login
+        await signOut({ callbackUrl: '/login' });
+        return; // Exit early since we're redirecting
+      }
+
+      console.log('Chat API response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text(); // Get raw text first
+        console.error('Chat API error response text:', errorText);
+        
+        let errorData = {};
+        try {
+          // Try to parse as JSON
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          // If it's not JSON, use the raw text
+          errorData = { detail: errorText };
+        }
+        
+        console.error('Chat API error response:', errorData);
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data: ChatResponse = await response.json();
+      console.log('Chat API success response:', data);
+
+      // Set conversation ID if not already set
+      if (!conversationId) {
+        setConversationId(data.conversation_id);
+      }
+
+      // Add assistant response
+      const assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: data.message,
+        timestamp: data.timestamp || new Date().toISOString(),
+        tool_calls: data.tool_calls
+      };
+
+      setChatMessages(prev => [...prev, assistantMessage]);
+
+      // Refresh tasks after AI operations
+      await fetchTasks();
+    } catch (err: any) {
+      console.error('Error sending message:', err);
+      setChatError(err.message || 'Failed to send message');
+
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `Error: ${err.message || 'Failed to process your request'}`,
+        timestamp: new Date().toISOString()
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Prevent rendering if session is not ready to avoid hydration errors
+  if (!session) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loading}>Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Head>
@@ -273,6 +479,13 @@ export default function Dashboard({ user }: DashboardProps) {
               <span className={styles.navIcon}>🗑️</span>
               <span>Deleted</span>
               <span className={styles.badge}>{deletedTasks.length}</span>
+            </button>
+            <button 
+              onClick={() => { setShowChat(true); setSidebarOpen(false); }}
+              className={styles.navLink}
+            >
+              <span className={styles.navIcon}>👨🏻‍💻</span>
+              <span>Talk to AI</span>
             </button>
           </nav>
 
@@ -466,6 +679,107 @@ export default function Dashboard({ user }: DashboardProps) {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Chat Modal */}
+        {showChat && (
+          <div className={styles.chatModalOverlay} onClick={() => setShowChat(false)}>
+            <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.chatModalHeader}>
+                <div className={styles.headerLeft}>
+                  <Image src="/icons/ayismm.png"
+                    alt="Todo Assistant"
+                    width={24}
+                    height={24} />
+                  <h2>AI Todo Assistant</h2>
+                </div>
+                <button 
+                  onClick={() => setShowChat(false)} 
+                  className={styles.modalClose}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className={styles.chatMessages}>
+                {chatMessages.length === 0 ? (
+                  <div className={styles.welcomeMessage}>
+                    <h3>Hello {user?.email}!</h3>
+                    <p>How can I help you with your tasks today?</p>
+                    <div className={styles.suggestions}>
+                      <div>Add a task called "Buy groceries"</div>
+                      <div>Show me my tasks</div>
+                      <div>Mark task #1 as complete</div>
+                      <div>Delete task #2</div>
+                    </div>
+                  </div>
+                ) : (
+                  chatMessages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`${styles.message} ${styles[`${message.role}Message`]}`}
+                    >
+                      <div className={styles.messageContent}>
+                        <div className={styles.messageText}>{message.content}</div>
+                        {message.tool_calls && message.tool_calls.length > 0 && (
+                          <div className={styles.toolCalls}>
+                            {message.tool_calls.map((call, index) => (
+                              <div key={index} className={styles.toolCall}>
+                                <strong>Tool:</strong> {call.function.name}
+                                <br />
+                                <strong>Args:</strong> {call.function.arguments}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className={styles.messageTimestamp}>
+                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {chatLoading && (
+                  <div className={`${styles.message} ${styles.assistantMessage}`}>
+                    <div className={styles.messageContent}>
+                      <div className={styles.typingIndicator}>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {chatError && (
+                <div className={styles.error}>
+                  <span>{chatError}</span>
+                  <button onClick={() => setChatError(null)} className={styles.errorButton}>×</button>
+                </div>
+              )}
+
+              <div className={styles.chatInputArea}>
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Message the AI assistant..."
+                  className={styles.chatInput}
+                  rows={1}
+                  disabled={chatLoading}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={chatLoading || !inputMessage.trim()}
+                  className={`${styles.sendButton} ${chatLoading ? styles.disabledButton : ''}`}
+                >
+                  Send
+                </button>
               </div>
             </div>
           </div>

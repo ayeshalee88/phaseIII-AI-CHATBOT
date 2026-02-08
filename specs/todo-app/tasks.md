@@ -1,98 +1,202 @@
-# Phase I Implementation Tasks
+# Phase III Todo AI Chatbot - Task Breakdown
 
 ## Overview
-This document outlines the specific tasks completed for Phase I of the Todo Application project.
+This document breaks down the implementation of the Todo AI Chatbot using MCP and OpenAI Agents into testable, manageable tasks with clear acceptance criteria.
 
-## Task List
+---
 
-### 1. Project Setup
-- [x] Create project directory structure with src/ folder
-- [x] Set up repository with proper file organization
-- [x] Confirm compliance with constitution constraints
+## Phase 1: Infrastructure Setup
 
-### 2. Core Data Model Implementation
-- [x] Design Task class with required attributes (id, title, description, completed, timestamps)
-- [x] Implement Task serialization methods
-- [x] Add proper validation for required fields
+### Task 1.1: Extend Database Schema for Conversations
+**Description**: Add tables and models for storing conversation history, messages, and tool invocations
+- Create `Conversation` model with user_id, conversation_id, created_at
+- Create `Message` model with conversation_id, role, content, timestamp
+- Create `ToolInvocation` model with conversation_id, tool_name, parameters, result
+- Update Alembic migrations to include new tables
+- Ensure proper foreign key relationships
 
-### 3. Business Logic Layer
-- [x] Create TodoApp class with in-memory storage
-- [x] Implement add_task method with ID management
-- [x] Implement list_tasks method
-- [x] Implement get_task method
-- [x] Implement update_task method with validation
-- [x] Implement delete_task method
-- [x] Implement toggle_task_completion method
-- [x] Implement mark_task_completed and mark_task_incomplete methods
+**Acceptance Criteria**:
+- [X] New models are defined with proper relationships
+- [X] Alembic migration creates tables successfully
+- [X] Database can store and retrieve conversation history
+- [X] Foreign key constraints prevent orphaned records
 
-### 4. Command-Line Interface
-- [x] Create TodoCLI class with formatted output
-- [x] Implement add command with proper argument parsing
-- [x] Implement list command to display all tasks
-- [x] Implement view command to show specific task details
-- [x] Implement update command with validation
-- [x] Implement delete command with confirmation
-- [x] Implement complete/incomplete/toggle commands
-- [x] Add help system with usage instructions
-- [x] Implement quit/exit functionality
+### Task 1.2: Implement MCP Server with Task Tools
+**Description**: Create MCP server with all required task operation tools
+- Implement `add_task` tool with proper validation
+- Implement `list_tasks` tool with user scoping
+- Implement `update_task` tool with proper error handling
+- Implement `complete_task` tool
+- Implement `delete_task` tool
+- Add MCP server startup and configuration
 
-### 5. Error Handling and Validation
-- [x] Add validation for empty titles
-- [x] Handle invalid task IDs gracefully
-- [x] Provide clear error messages to users
-- [x] Validate command arguments
+**Acceptance Criteria**:
+- [X] All 5 task operation tools are available via MCP
+- [X] Tools properly validate inputs before database operations
+- [X] Tools respect user permissions and task ownership
+- [X] MCP server starts successfully and is accessible
 
-### 6. Cross-Platform Compatibility
-- [x] Avoid Unicode characters that cause Windows encoding issues
-- [x] Use ASCII equivalents for visual indicators
-- [x] Test on Windows environment
+### Task 1.3: Set Up OpenAI Agent Configuration
+**Description**: Configure OpenAI Agent with MCP tools and proper system instructions
+- Initialize OpenAI Agent with MCP tools
+- Define system instructions for the agent
+- Set up API key configuration and environment variables
+- Configure agent parameters for optimal performance
 
-### 7. Documentation
-- [x] Create comprehensive README.md with setup instructions
-- [x] Document all available commands and usage examples
-- [x] Explain project architecture and design decisions
-- [x] Update CLAUDE.md with project-specific rules
+**Acceptance Criteria**:
+- [X] OpenAI Agent initializes successfully
+- [X] Agent has access to all required MCP tools
+- [X] System instructions properly configured
+- [X] Environment variables are properly loaded
 
-### 8. Testing and Verification
-- [x] Test all CRUD operations individually
-- [x] Verify command-line interface functionality
-- [x] Test error conditions and edge cases
-- [x] Confirm application starts and runs correctly
-- [x] Validate cross-platform compatibility
+---
 
-### 9. Entry Point Creation
-- [x] Create run.py as simple application entry point
-- [x] Verify application can be started via entry point
-- [x] Test basic functionality through CLI
+## Phase 2: Core Integration
 
-## Acceptance Criteria Verification
+### Task 2.1: Create Stateless Chat Endpoint
+**Description**: Implement the `/api/{user_id}/chat` endpoint that reconstructs conversation history and processes user messages
+- Implement conversation history reconstruction from database
+- Integrate with OpenAI Agent for message processing
+- Implement response aggregation including tool calls
+- Add authentication validation using Better Auth
 
-### Functional Requirements
-- [x] Add tasks with title and description
-- [x] List all tasks with unique ID and completion status
-- [x] Update task title and description by ID
-- [x] Delete tasks by ID
-- [x] Toggle task completion state by ID
+**Acceptance Criteria**:
+- [X] Endpoint accepts user messages and user_id
+- [X] Conversation history is reconstructed from database
+- [X] OpenAI Agent processes messages with context
+- [X] Response includes conversation_id, message, and tool calls
+- [X] Authentication validation works properly
 
-### Non-Functional Requirements
-- [x] In-memory storage only (no files or databases)
-- [x] Python 3.13+ with standard library only
-- [x] Console interface only
-- [x] No manual coding (generated exclusively by Claude Code)
-- [x] Cross-platform compatibility
+### Task 2.2: Implement Conversation Persistence
+**Description**: Add logic to persist conversations, messages, and tool invocations to database
+- Save new conversations to database
+- Log user messages to message history
+- Log agent responses to message history
+- Log tool invocations with parameters and results
 
-## Artifacts Delivered
-- [x] src/todo_app.py - Main application code
-- [x] README.md - Project documentation
-- [x] CLAUDE.md - Claude Code rules
-- [x] run.py - Application entry point
-- [x] history/prompts/general/ - Directory for prompt history
-- [x] plan.md - Implementation plan
-- [x] All functionality tested and verified working
+**Acceptance Criteria**:
+- [X] New conversations are saved to database
+- [X] User messages are stored in message history
+- [X] Agent responses are stored in message history
+- [X] Tool invocations are logged with parameters and results
+- [X] All timestamps are correctly recorded
 
-## Success Metrics
-- [x] Application runs successfully via console
-- [x] All 5 basic Todo features implemented and working
-- [x] Code generated exclusively through Claude Code
-- [x] Project structure follows clean Python conventions
-- [x] Ready to proceed to Phase II
+### Task 2.3: Add Authentication Integration
+**Description**: Integrate authentication validation with Better Auth into the chat endpoint
+- Validate JWT tokens in chat endpoint
+- Extract user_id from authenticated requests
+- Handle unauthorized requests appropriately
+- Ensure user isolation for task access
+
+**Acceptance Criteria**:
+- [X] JWT tokens are validated in chat endpoint
+- [X] User_id is extracted correctly from authenticated requests
+- [X] Unauthorized requests return appropriate error codes
+- [X] Users can only access their own tasks and conversations
+
+---
+
+## Phase 3: UI Enhancement
+
+### Task 3.1: Replace Dashboard with ChatKit UI
+**Description**: Replace the existing dashboard with OpenAI ChatKit interface
+- Install OpenAI ChatKit dependencies
+- Replace dashboard.tsx with ChatKit-based UI
+- Implement user authentication with ChatKit
+- Connect ChatKit to the new chat endpoint
+
+**Acceptance Criteria**:
+- [X] ChatKit UI is implemented and functional
+- [X] User authentication works with new UI
+- [X] Chat interface connects to `/api/{user_id}/chat` endpoint
+- [X] Messages display properly in chat interface
+
+### Task 3.2: Add Conversation Display Features
+**Description**: Enhance the ChatKit UI to show conversation history and tool invocations
+- Load conversation history on initial load
+- Display conversation history in chat interface
+- Show tool invocations alongside messages
+- Implement proper message formatting for tool calls
+
+**Acceptance Criteria**:
+- [X] Conversation history loads on initial page load
+- [X] Previous messages display in chronological order
+- [X] Tool invocations are clearly shown in the chat
+- [X] Message formatting distinguishes between user, assistant, and tool messages
+
+### Task 3.3: Implement Chat Input and Submission
+**Description**: Handle user input and submission in the ChatKit UI
+- Implement message submission to backend
+- Handle loading states during agent processing
+- Display agent responses and tool calls appropriately
+- Handle error states and error messages
+
+**Acceptance Criteria**:
+- [X] User can submit messages through UI
+- [X] Loading states are shown during processing
+- [X] Agent responses are displayed properly
+- [X] Error states are handled gracefully
+
+---
+
+## Phase 4: Testing & Optimization
+
+### Task 4.1: Test Natural Language Commands
+**Description**: Validate that all natural language commands work through the AI interface
+- Test "add a task" commands work correctly
+- Test "show my tasks" commands work correctly
+- Test "update task" commands work correctly
+- Test "complete task" commands work correctly
+- Test "delete task" commands work correctly
+
+**Acceptance Criteria**:
+- [X] All natural language commands trigger correct MCP tools
+- [X] Task operations work correctly through conversation
+- [X] Error handling works for invalid commands
+- [X] Agent responses are natural and helpful
+
+### Task 4.2: Validate Conversation Persistence
+**Description**: Verify that conversations persist across server restarts
+- Restart server during active conversation
+- Verify conversation history is restored correctly
+- Test continued conversation after restart
+- Verify no data loss occurs during restart
+
+**Acceptance Criteria**:
+- [X] Conversations survive server restarts
+- [X] Conversation history is properly reconstructed
+- [X] Users can continue conversations after restart
+- [X] No data is lost during restart process
+
+### Task 4.3: Performance and Error Testing
+**Description**: Conduct performance testing and error handling validation
+- Test performance under load
+- Validate error handling for invalid inputs
+- Test tool invocation logging and monitoring
+- Verify rate limiting and security measures
+
+**Acceptance Criteria**:
+- [X] System performs well under expected load
+- [X] Invalid inputs are handled gracefully
+- [X] Tool invocations are properly logged
+- [X] Security measures are effective
+
+---
+
+## Out of Scope Tasks
+These are intentionally NOT being implemented:
+- [X] Voice input or speech-to-text functionality
+- [X] Multi-user shared conversations
+- [X] Real-time streaming responses
+- [X] Advanced agent memory beyond persisted chat history
+- [X] Custom UI styling beyond ChatKit default
+
+---
+
+## Prerequisites
+Before starting these tasks, ensure:
+- [X] Existing Phase II backend is functioning properly
+- [X] Database connection is working
+- [X] Authentication system is operational
+- [X] Development environment has necessary API keys
+- [X] OpenAI account and MCP SDK access is available

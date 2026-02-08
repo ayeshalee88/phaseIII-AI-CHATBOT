@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type ApiResult<T> = {
   data?: T;
@@ -9,7 +9,7 @@ export const apiClient = {
   // GET TASKS
   async getTasks(userId: string): Promise<ApiResult<any[]>> {
     try {
-      const res = await fetch(`${API_URL}/users/${userId}/tasks`);
+      const res = await fetch(`${API_URL}/api/users/${userId}/tasks`);
 
       if (!res.ok) {
         return { error: `Failed to fetch tasks: ${res.status}` };
@@ -25,7 +25,7 @@ export const apiClient = {
   // CREATE TASK
   async createTask(userId: string, task: any): Promise<ApiResult<any>> {
     try {
-      const res = await fetch(`${API_URL}/users/${userId}/tasks`, {
+      const res = await fetch(`${API_URL}/api/users/${userId}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(task),
@@ -50,7 +50,7 @@ export const apiClient = {
   ): Promise<ApiResult<any>> {
     try {
       const res = await fetch(
-        `${API_URL}/users/${userId}/tasks/${taskId}`,
+        `${API_URL}/api/users/${userId}/tasks/${taskId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -76,7 +76,7 @@ export const apiClient = {
   ): Promise<ApiResult<null>> {
     try {
       const res = await fetch(
-        `${API_URL}/users/${userId}/tasks/${taskId}`,
+        `${API_URL}/api/users/${userId}/tasks/${taskId}`,
         { method: 'DELETE' }
       );
 
@@ -98,7 +98,7 @@ export const apiClient = {
   ): Promise<ApiResult<any>> {
     try {
       const res = await fetch(
-        `${API_URL}/users/${userId}/tasks/${taskId}/complete`,
+        `${API_URL}/api/users/${userId}/tasks/${taskId}/complete`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
