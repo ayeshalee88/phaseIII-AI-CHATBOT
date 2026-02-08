@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import NextAuthReact from 'next-auth/react';
 
-const { signOut, useSession } = NextAuthReact as {
-  signOut: any;
-  useSession: any;
-};
+const signOut = (NextAuthReact as any).signOut;
+const useSession = (NextAuthReact as any).useSession;
 import { GetServerSideProps } from 'next';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from  "./api/auth/[...nextauth]";

@@ -3,11 +3,9 @@ import NextAuthReact from 'next-auth/react';
 import { useRouter } from 'next/router';
 
 // Extract functions with type assertion to bypass TypeScript errors for Vercel deployment
-const { signIn, signOut, useSession } = NextAuthReact as {
-  signIn: any;
-  signOut: any;
-  useSession: any;
-};
+const signIn = (NextAuthReact as any).signIn;
+const signOut = (NextAuthReact as any).signOut;
+const useSession = (NextAuthReact as any).useSession;
 
 interface User {
   id: string;

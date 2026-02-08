@@ -1,8 +1,6 @@
 import NextAuthReact from "next-auth/react";
 
-const { signIn } = NextAuthReact as {
-  signIn: any;
-};
+const signIn = (NextAuthReact as any).signIn;
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { GetServerSideProps } from "next";

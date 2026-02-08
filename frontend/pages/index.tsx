@@ -3,9 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import NextAuthReact from 'next-auth/react';
 
-const { useSession } = NextAuthReact as {
-  useSession: any;
-}; 
+const useSession = (NextAuthReact as any).useSession; 
 import Head from 'next/head';
 import styles from '../styles/HomePage.module.css';
 import Image from 'next/image';
