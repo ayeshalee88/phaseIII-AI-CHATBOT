@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import NextAuthReact from "next-auth/react";
-
-const signIn = (NextAuthReact as any).signIn;
 import { GetServerSideProps } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]";
-import styles from "../styles/Login.module.css";  
+import styles from "../styles/Login.module.css";
 import Image from "next/image"
+
+// Dynamic import for signIn to handle potential runtime issues in Vercel
+const getSignIn = () => {
+  if (typeof window !== 'undefined') {
+    const { signIn } = require('next-auth/react');
+    return signIn;
+  }
+  return () => Promise.resolve();
+};
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState(""); 
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,7 +50,8 @@ export default function SignupPage() {
       }
 
       // Auto login after signup
-      const result = await signIn("credentials", {
+      const signInFunc = getSignIn();
+      const result = await signInFunc("credentials", {
         email,
         password,
         redirect: false,
@@ -63,7 +70,8 @@ export default function SignupPage() {
   };
 
   const handleGoogleSignup = () => {
-    signIn("google", { callbackUrl: "/dashboard" });
+    const signInFunc = getSignIn();
+    signInFunc("google", { callbackUrl: "/dashboard" });
   };
 
   return (
@@ -79,9 +87,9 @@ export default function SignupPage() {
         </div>
         <h2>Create Account</h2>
         {error && <div className={styles.error}>{error}</div>}
-        
+
         {/* Google Sign-In Button */}
-        <button 
+        <button
           onClick={handleGoogleSignup}
           className={styles.googleButton}
           disabled={loading}
@@ -132,16 +140,16 @@ export default function SignupPage() {
               id="confirmPassword"
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)} 
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={loading}
               autoComplete="new-password"
               minLength={6}
             />
           </div>
-          <button 
-            type="submit" 
-            className={styles.submitButton} 
+          <button
+            type="submit"
+            className={styles.submitButton}
             disabled={loading}
           >
             {loading ? "Creating Account..." : "Sign Up"}
@@ -158,7 +166,7 @@ export default function SignupPage() {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getServerSession(context.req, context.res, authOptions);
-  
+
   if (session) {
     return {
       redirect: {

@@ -1,14 +1,19 @@
-import NextAuthReact from "next-auth/react";
-
-const signIn = (NextAuthReact as any).signIn;
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { GetServerSideProps } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]";
-import styles from "../styles/Login.module.css";   
-import Image from "next/image"; 
+import styles from "../styles/Login.module.css";
+import Image from "next/image";
 
+// Dynamic import for signIn to handle potential runtime issues in Vercel
+const getSignIn = () => {
+  if (typeof window !== 'undefined') {
+    const { signIn } = require('next-auth/react');
+    return signIn;
+  }
+  return () => Promise.resolve();
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -22,7 +27,8 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
+    const signInFunc = getSignIn();
+    const result = await signInFunc("credentials", {
       email,
       password,
       redirect: false,
@@ -37,7 +43,8 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    signIn("google", { callbackUrl: "/dashboard" });
+    const signInFunc = getSignIn();
+    signInFunc("google", { callbackUrl: "/dashboard" });
   };
 
   return (
@@ -53,9 +60,9 @@ export default function LoginPage() {
         </div>
         <h2>Welcome Back</h2>
         {error && <div className={styles.error}>{error}</div>}
-        
+
         {/* Google Sign-In Button */}
-        <button 
+        <button
           onClick={handleGoogleLogin}
           className={styles.googleButton}
           disabled={loading}

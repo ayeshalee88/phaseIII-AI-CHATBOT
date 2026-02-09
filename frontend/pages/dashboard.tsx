@@ -1,10 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import NextAuthReact from 'next-auth/react';
 import { GetServerSideProps } from 'next';
-
-// Access functions with type assertion to bypass TypeScript errors
-const signOut = (NextAuthReact as any).signOut;
-const useSession = (NextAuthReact as any).useSession;
 import { getServerSession } from "next-auth/next";
 import { authOptions } from  "./api/auth/[...nextauth]";
 import TaskCard from '../components/TaskCard';
@@ -14,6 +9,24 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import styles from '../styles/Dashboard.module.css';
 import Image from 'next/image';
+
+// Dynamic imports for next-auth functions to handle potential runtime issues in Vercel
+const getSignOut = () => {
+  if (typeof window !== 'undefined') {
+    const { signOut } = require('next-auth/react');
+    return signOut;
+  }
+  return () => Promise.resolve();
+};
+
+const getUseSession = () => {
+  if (typeof window !== 'undefined') {
+    const { useSession } = require('next-auth/react');
+    return useSession;
+  }
+  // Return a mock session hook for SSR
+  return () => [null, 'loading'];
+};
 
 interface Task {
   id: string;
@@ -76,7 +89,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [filter, setFilter] = useState<'all' | 'important' | 'completed'>('all');
   const [view, setView] = useState<'grid' | 'calendar'>('grid');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { data: session } = useSession();
+  const { data: session } = getUseSession()();
   const [showDeletedModal, setShowDeletedModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -210,7 +223,8 @@ export default function Dashboard({ user }: DashboardProps) {
   };
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' });
+    const signOutFunc = getSignOut();
+    await signOutFunc({ callbackUrl: '/' });
   };
 
   const handleRestoreTask = async (taskId: string) => {
@@ -348,7 +362,8 @@ export default function Dashboard({ user }: DashboardProps) {
         alert('Your session has expired. Please log in again to continue using the AI assistant.');
 
         // Redirect to login
-        await signOut({ callbackUrl: '/login' });
+        const signOutFunc = getSignOut();
+        await signOutFunc({ callbackUrl: '/login' });
         return; // Exit early since we're redirecting
       }
 

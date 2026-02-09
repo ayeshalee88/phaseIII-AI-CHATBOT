@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router'; 
+import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import NextAuthReact from 'next-auth/react';
 import Head from 'next/head';
 import styles from '../styles/HomePage.module.css';
 import Image from 'next/image';
 import Script from 'next/script';
 
-// Access useSession with type assertion to bypass TypeScript errors
-const useSession = (NextAuthReact as any).useSession;
+// Dynamic import for useSession to handle potential runtime issues in Vercel
+const getUseSession = () => {
+  if (typeof window !== 'undefined') {
+    const { useSession } = require('next-auth/react');
+    return useSession;
+  }
+  // Return a mock session hook for SSR
+  return () => [null, 'loading'];
+};
 
 export default function Home() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const { data: session, status } = useSession();
+  const { data: session, status } = getUseSession()();
   return (
     <>
       <Head>
@@ -23,29 +29,22 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
 
-      <Head>
-  <title>Todoify - Professional Task Management</title>
-  <meta name="description" content="Organize your life with beautiful sticky notes" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-</Head>
-
-
       {/* Navigation */}
       <nav className={styles.navbar}>
         <div className={styles.navContainer}>
           <div className={styles.logo}>
-            <Image src="/icons/ayismm.png" 
-                  alt="Smart Reminders" 
-                  width={50} 
+            <Image src="/icons/ayismm.png"
+                  alt="Smart Reminders"
+                  width={50}
                   height={50} />
-              
-            <div className={styles.bookLogo}> 
+
+            <div className={styles.bookLogo}>
             </div>
 
             <span className={styles.logoText}>
               Todoify</span>
           </div>
-          
+
           {/* Desktop Navigation */}
           <div className={styles.navLinks}>
             <a href="/signup" className={styles.navLogin}>Sign In</a>
@@ -53,7 +52,7 @@ export default function Home() {
           </div>
 
           {/* Mobile Menu Button */}
-          <button 
+          <button
             className={styles.mobileMenuButton}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
@@ -70,9 +69,9 @@ export default function Home() {
             <a href="/signup" className={styles.mobileMenuSignup}>Get Started</a>
           </div>
         )}
-        
+
       </nav>
-    
+
 
       {/* Hero Section */}
       <section className={styles.hero}>
@@ -87,17 +86,17 @@ export default function Home() {
             <span className={styles.badgeDot}></span>
             Your Personal Task Manager
           </div>
-          
+
           <h1 className={styles.heroTitle}>
             <span className={styles.typingText}>Organize Your Life with</span>
             <br />
             <span className={`${styles.typingText} ${styles.heroTitleGradient}`}>Beautiful Sticky Notes</span>
           </h1>
           <p className={styles.heroSubtitle}>
-            Transform your tasks into colorful, organized sticky notes. 
+            Transform your tasks into colorful, organized sticky notes.
             Simple, visual, and delightfully effective task management.
           </p>
-          
+
           <div className={styles.heroCta}>
             <a href="/signup" className={styles.ctaPrimary}>
               <span>Get Started Free</span>
@@ -109,7 +108,7 @@ export default function Home() {
               Login
             </a>
           </div>
-          
+
           <div className={styles.heroFeatures}>
             <div className={styles.heroFeatureItem}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -128,10 +127,10 @@ export default function Home() {
 
         {/* Floating Sticky Notes Preview */}
         <div className={styles.heroPreview}>
-          <div 
+          <div
             className={styles.stickyNote}
-            style={{ 
-              background: 'linear-gradient(135deg, #fef3c7, #fde68a)', 
+            style={{
+              background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
               top: '5%',
               left: '0%',
               zIndex: 3,
@@ -144,11 +143,11 @@ export default function Home() {
             <h4>Social Media Post</h4>
             <p>Create engaging content for Instagram and Twitter campaigns</p>
           </div>
-          
-          <div 
+
+          <div
             className={styles.stickyNote}
-            style={{ 
-              background: 'linear-gradient(135deg, #dbeafe, #93c5fd)', 
+            style={{
+              background: 'linear-gradient(135deg, #dbeafe, #93c5fd)',
               top: '30%',
               right: '5%',
               zIndex: 2,
@@ -161,11 +160,11 @@ export default function Home() {
             <h4>Content Strategy</h4>
             <p>Outline Q1 content calendar and themes for the year</p>
           </div>
-          
-          <div 
+
+          <div
             className={styles.stickyNote}
-            style={{ 
-              background: 'linear-gradient(135deg, #fce7f3, #f9a8d4)', 
+            style={{
+              background: 'linear-gradient(135deg, #fce7f3, #f9a8d4)',
               bottom: '8%',
               left: '10%',
               zIndex: 1,
@@ -180,7 +179,7 @@ export default function Home() {
         </div>
       </section>
 
-      
+
 
       {/* Visual Showcase Section */}
       <section className={styles.showcase}>
@@ -228,9 +227,9 @@ export default function Home() {
             <div className={styles.showcaseFeatures}>
               <div className={styles.showcaseFeatureItem}>
                 <div className={styles.showcaseFeatureIcon}>
-                  <Image src="/icons/bada.png" 
-                  alt="Quick Add" 
-                  width={180} 
+                  <Image src="/icons/bada.png"
+                  alt="Quick Add"
+                  width={180}
                   height={150} />
                 </div>
                 <div>
@@ -240,9 +239,9 @@ export default function Home() {
               </div>
               <div className={styles.showcaseFeatureItem}>
                 <div className={styles.showcaseFeatureIcon}>
-                  <Image src="/icons/unnamed.png" 
-                  alt="Quick Add" 
-                  width={180} 
+                  <Image src="/icons/unnamed.png"
+                  alt="Quick Add"
+                  width={180}
                   height={170} />
                 </div>
                 <div>
@@ -252,9 +251,9 @@ export default function Home() {
               </div>
               <div className={styles.showcaseFeatureItem}>
                 <div className={styles.showcaseFeatureIcon}>
-                  <Image src="/icons/ayis.png" 
-                  alt="Smart Reminders" 
-                  width={150} 
+                  <Image src="/icons/ayis.png"
+                  alt="Smart Reminders"
+                  width={150}
                   height={150} />
                 </div>
                 <div>
