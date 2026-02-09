@@ -1,45 +1,5 @@
-﻿import React, { createContext, useContext, ReactNode } from 'react';
+﻿import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-
-// Dynamic import for next-auth functions to handle potential runtime issues in Vercel
-const getSignIn = () => {
-  try {
-    if (typeof window !== 'undefined') {
-      const { signIn } = require('next-auth/react');
-      return signIn;
-    }
-  } catch (error) {
-    console.warn('next-auth signIn not available:', error);
-    return () => Promise.resolve();
-  }
-  return () => Promise.resolve();
-};
-
-const getSignOut = () => {
-  try {
-    if (typeof window !== 'undefined') {
-      const { signOut } = require('next-auth/react');
-      return signOut;
-    }
-  } catch (error) {
-    console.warn('next-auth signOut not available:', error);
-    return () => Promise.resolve();
-  }
-  return () => Promise.resolve();
-};
-
-const getUseSession = () => {
-  try {
-    if (typeof window !== 'undefined') {
-      const { useSession } = require('next-auth/react');
-      return useSession;
-    }
-  } catch (error) {
-    console.warn('next-auth useSession not available:', error);
-    return () => [null, 'loading'];
-  }
-  return () => [null, 'loading'];
-};
 
 interface User {
   id: string;
@@ -65,12 +25,42 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [session, status] = getUseSession()();
+  const [session, setSession] = useState<any>(null);
+  const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+  const [authFunctions, setAuthFunctions] = useState<{
+    signIn: any;
+    signOut: any;
+  } | null>(null);
+  
   const router = useRouter();
 
+  // Initialize next-auth functions when component mounts in browser
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const { signIn, signOut, useSession } = require('next-auth/react');
+        setAuthFunctions({ signIn, signOut });
+        
+        // Get initial session
+        const [initialSession, initialStatus] = useSession();
+        setSession(initialSession);
+        setStatus(initialStatus as 'loading' | 'authenticated' | 'unauthenticated');
+      } catch (error) {
+        console.warn('next-auth not available:', error);
+        setStatus('unauthenticated');
+      }
+    } else {
+      // For SSR, start with loading state
+      setStatus('loading');
+    }
+  }, []);
+
   const login = async (email: string, password: string) => {
-    const signInFunc = getSignIn();
-    const result = await signInFunc('credentials', {
+    if (!authFunctions) {
+      throw new Error('Authentication functions not initialized');
+    }
+    
+    const result = await authFunctions.signIn('credentials', {
       email,
       password,
       redirect: false,
@@ -86,6 +76,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signup = async (email: string, password: string) => {
+    if (!authFunctions) {
+      throw new Error('Authentication functions not initialized');
+    }
+    
     try {
       // Create the user account via backend API
       const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
@@ -101,8 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // After successful signup, log them in
-      const signInFunc = getSignIn();
-      const result = await signInFunc('credentials', {
+      const result = await authFunctions.signIn('credentials', {
         email,
         password,
         redirect: false,
@@ -122,13 +115,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const loginWithGoogle = async () => {
-    const signInFunc = getSignIn();
-    await signInFunc('google', { callbackUrl: '/dashboard' }); // ✅ Google login also goes to dashboard
+    if (!authFunctions) {
+      throw new Error('Authentication functions not initialized');
+    }
+    
+    await authFunctions.signIn('google', { callbackUrl: '/dashboard' }); // ✅ Google login also goes to dashboard
   };
 
   const logout = async () => {
-    const signOutFunc = getSignOut();
-    await signOutFunc({ callbackUrl: '/login' });
+    if (!authFunctions) {
+      throw new Error('Authentication functions not initialized');
+    }
+    
+    await authFunctions.signOut({ callbackUrl: '/login' });
   };
 
   const value = {
