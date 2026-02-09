@@ -3,27 +3,41 @@ import { useRouter } from 'next/router';
 
 // Dynamic import for next-auth functions to handle potential runtime issues in Vercel
 const getSignIn = () => {
-  if (typeof window !== 'undefined') {
-    const { signIn } = require('next-auth/react');
-    return signIn;
+  try {
+    if (typeof window !== 'undefined') {
+      const { signIn } = require('next-auth/react');
+      return signIn;
+    }
+  } catch (error) {
+    console.warn('next-auth signIn not available:', error);
+    return () => Promise.resolve();
   }
   return () => Promise.resolve();
 };
 
 const getSignOut = () => {
-  if (typeof window !== 'undefined') {
-    const { signOut } = require('next-auth/react');
-    return signOut;
+  try {
+    if (typeof window !== 'undefined') {
+      const { signOut } = require('next-auth/react');
+      return signOut;
+    }
+  } catch (error) {
+    console.warn('next-auth signOut not available:', error);
+    return () => Promise.resolve();
   }
   return () => Promise.resolve();
 };
 
 const getUseSession = () => {
-  if (typeof window !== 'undefined') {
-    const { useSession } = require('next-auth/react');
-    return useSession;
+  try {
+    if (typeof window !== 'undefined') {
+      const { useSession } = require('next-auth/react');
+      return useSession;
+    }
+  } catch (error) {
+    console.warn('next-auth useSession not available:', error);
+    return () => [null, 'loading'];
   }
-  // Return a mock session hook for SSR
   return () => [null, 'loading'];
 };
 

@@ -8,9 +8,14 @@ import Image from "next/image";
 
 // Dynamic import for signIn to handle potential runtime issues in Vercel
 const getSignIn = () => {
-  if (typeof window !== 'undefined') {
-    const { signIn } = require('next-auth/react');
-    return signIn;
+  try {
+    if (typeof window !== 'undefined') {
+      const { signIn } = require('next-auth/react');
+      return signIn;
+    }
+  } catch (error) {
+    console.warn('next-auth signIn not available:', error);
+    return () => Promise.resolve();
   }
   return () => Promise.resolve();
 };

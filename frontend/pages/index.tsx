@@ -8,9 +8,14 @@ import Script from 'next/script';
 
 // Dynamic import for useSession to handle potential runtime issues in Vercel
 const getUseSession = () => {
-  if (typeof window !== 'undefined') {
-    const { useSession } = require('next-auth/react');
-    return useSession;
+  try {
+    if (typeof window !== 'undefined') {
+      const { useSession } = require('next-auth/react');
+      return useSession;
+    }
+  } catch (error) {
+    console.warn('next-auth useSession not available:', error);
+    return () => [null, 'loading'];
   }
   // Return a mock session hook for SSR
   return () => [null, 'loading'];
